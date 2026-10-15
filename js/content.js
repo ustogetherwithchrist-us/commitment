@@ -164,6 +164,7 @@ window.CONTENT = {
           ref: "Proverbs 31:30",
           text: "Charm is deceitful and beauty is passing, But a woman who fears the LORD, she shall be praised."
         },
+        { ref: "Proverbs 31:25", text: "Strength and honor are her clothing; She shall rejoice in time to come." },
         { ref: "Proverbs 12:4", text: "An excellent wife is the crown of her husband…" }
       ]
     },
@@ -358,6 +359,10 @@ window.CONTENT = {
     {
       title: "Faithfulness & Hope",
       verses: [
+        {
+          ref: "Psalm 145:9",
+          text: "The LORD is good to all, And His tender mercies are over all His works."
+        },
         {
           ref: "Lamentations 3:22–23",
           text:

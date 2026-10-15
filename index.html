@@ -3,9 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Jemimah &amp; Joel · Together with Christ</title>
-  <meta name="description" content="Jemimah Nirmala Chinta weds Joel Raj Vemuri, 16 October 2032. Our promises, the three pillars of our marriage, and the Word that binds us together in Christ.">
+  <title>Jemimah &amp; Joel · Holy Matrimony</title>
+  <meta name="description" content="The Holy Matrimony of Jemimah Nirmala Chinta and Joel Raj Vemuri, 16 October 2032. United in Christ, bound in eternal love.">
   <meta name="theme-color" content="#FBF7EF">
+  <meta property="og:title" content="Jemimah &amp; Joel · Holy Matrimony">
+  <meta property="og:description" content="United in Christ · Bound in Eternal Love · 16 October 2032">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 104'%3E%3Cg fill='none' stroke='%23B8893B' stroke-width='6'%3E%3Cpath d='M60 4V34M50 14H70'/%3E%3Ccircle cx='46' cy='68' r='24'/%3E%3Ccircle cx='74' cy='68' r='24'/%3E%3C/g%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,9 +21,22 @@
     <defs>
       <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#A57A2E"/>
-        <stop offset=".45" stop-color="#E6C77A"/>
+        <stop offset=".45" stop-color="#F0D896"/>
         <stop offset=".7" stop-color="#B8893B"/>
         <stop offset="1" stop-color="#8A6628"/>
+      </linearGradient>
+      <radialGradient id="wax-grad" cx=".38" cy=".32" r=".75">
+        <stop offset="0" stop-color="#B8434F"/>
+        <stop offset=".55" stop-color="#8C2633"/>
+        <stop offset="1" stop-color="#5E1520"/>
+      </radialGradient>
+      <linearGradient id="paper-grad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#F8EEDA"/>
+        <stop offset="1" stop-color="#EBDAB6"/>
+      </linearGradient>
+      <linearGradient id="flap-grad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#F3E5C6"/>
+        <stop offset="1" stop-color="#E4CFA4"/>
       </linearGradient>
       <symbol id="ico-rings" viewBox="0 0 120 104">
         <g fill="none" stroke="url(#gold-grad)" stroke-linecap="round">
@@ -67,14 +82,51 @@
           <circle cx="4" cy="12" r="1.6"/><circle cx="236" cy="12" r="1.6"/>
         </g>
       </symbol>
+      <symbol id="ico-seal" viewBox="0 0 100 100">
+        <g fill="url(#wax-grad)">
+          <circle cx="50" cy="50" r="42"/>
+          <circle cx="88.0" cy="50.0" r="10"/><circle cx="82.9" cy="69.0" r="10"/><circle cx="69.0" cy="82.9" r="10"/><circle cx="50.0" cy="88.0" r="10"/><circle cx="31.0" cy="82.9" r="10"/><circle cx="17.1" cy="69.0" r="10"/><circle cx="12.0" cy="50.0" r="10"/><circle cx="17.1" cy="31.0" r="10"/><circle cx="31.0" cy="17.1" r="10"/><circle cx="50.0" cy="12.0" r="10"/><circle cx="69.0" cy="17.1" r="10"/><circle cx="82.9" cy="31.0" r="10"/>
+        </g>
+        <circle cx="50" cy="50" r="31" fill="none" stroke="#E9C77B" stroke-width="1.2" opacity=".75"/>
+        <circle cx="50" cy="50" r="27" fill="none" stroke="#3E0C14" stroke-width=".8" opacity=".35"/>
+        <text x="50" y="60" text-anchor="middle" font-family="Great Vibes, cursive" font-size="30" fill="#F2D594">J&amp;J</text>
+      </symbol>
     </defs>
   </svg>
 
+  <canvas class="ambient" id="ambient" aria-hidden="true"></canvas>
   <div class="petals" id="petals" aria-hidden="true"></div>
 
-  <!-- The proposal: shown every time the site opens -->
-  <div class="proposal" id="proposal" role="dialog" aria-modal="true" aria-labelledby="proposal-question" aria-describedby="proposal-sub">
-    <div class="proposal__card">
+  <!-- Envelope + proposal: shown every time the site opens -->
+  <div class="proposal" id="proposal" role="dialog" aria-modal="true" aria-labelledby="envelope-title">
+    <div class="envelope-stage" id="envelope-stage">
+      <p class="kicker">The Holy Matrimony Celebration</p>
+      <h2 class="envelope__title" id="envelope-title">A letter for <span class="gold-text">Jemimah &amp; Joel</span></h2>
+      <div class="envelope" id="envelope">
+        <svg class="envelope__back" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true">
+          <rect width="300" height="200" rx="6" fill="url(#paper-grad)"/>
+        </svg>
+        <div class="envelope__letter" aria-hidden="true">
+          <svg class="rings" aria-hidden="true"><use href="#ico-rings"/></svg>
+          <p class="envelope__letter-text">Will you marry me?</p>
+        </div>
+        <svg class="envelope__pocket" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 0L150 110L300 0V200H0Z" fill="url(#flap-grad)"/>
+          <path d="M0 200L138 104M300 200L162 104" fill="none" stroke="#B8893B" stroke-opacity=".45" vector-effect="non-scaling-stroke"/>
+          <rect x="1" y="1" width="298" height="198" rx="6" fill="none" stroke="#B8893B" stroke-opacity=".5" vector-effect="non-scaling-stroke"/>
+        </svg>
+        <svg class="envelope__flap" viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 0H300L150 120Z" fill="url(#flap-grad)"/>
+          <path d="M0 0L150 120L300 0" fill="none" stroke="#B8893B" stroke-opacity=".55" vector-effect="non-scaling-stroke"/>
+        </svg>
+        <button type="button" class="seal" id="seal" aria-label="Break the seal and open the letter">
+          <svg aria-hidden="true"><use href="#ico-seal"/></svg>
+        </button>
+      </div>
+      <p class="envelope__hint">Tap the seal to open</p>
+    </div>
+
+    <div class="proposal__card" id="proposal-card" hidden>
       <svg class="corner corner--tl" aria-hidden="true"><use href="#ico-corner"/></svg>
       <svg class="corner corner--tr" aria-hidden="true"><use href="#ico-corner"/></svg>
       <svg class="corner corner--bl" aria-hidden="true"><use href="#ico-corner"/></svg>
@@ -83,13 +135,12 @@
       <svg class="rings rings--lg" aria-hidden="true"><use href="#ico-rings"/></svg>
       <p class="proposal__names">Jemimah <span class="amp">&amp;</span> Joel</p>
       <h2 class="proposal__question" id="proposal-question">Will you marry me?</h2>
-      <p class="proposal__sub" id="proposal-sub">Today, tomorrow, every day until 16&nbsp;October&nbsp;2032, and forever after, in Christ.</p>
+      <p class="proposal__sub">Today, tomorrow, every day until 16&nbsp;October&nbsp;2032, and forever after, in Christ.</p>
       <div class="proposal__actions">
         <button type="button" class="btn btn--gold" data-yes>Yes, forever</button>
         <button type="button" class="btn btn--ghost" data-yes>Yes, in Christ</button>
       </div>
       <p class="proposal__tally" id="proposal-tally" aria-live="polite"></p>
-      <p class="proposal__hint">Tap “yes” to begin our song</p>
     </div>
   </div>
 
@@ -100,13 +151,17 @@
       <svg class="corner corner--bl" aria-hidden="true"><use href="#ico-corner"/></svg>
       <svg class="corner corner--br" aria-hidden="true"><use href="#ico-corner"/></svg>
 
-      <p class="kicker">Together with Christ</p>
-      <svg class="rings" aria-hidden="true"><use href="#ico-rings"/></svg>
+      <p class="kicker">The Holy Matrimony Celebration</p>
+      <div class="rosette" aria-hidden="true">
+        <canvas id="rosette"></canvas>
+        <svg class="rings"><use href="#ico-rings"/></svg>
+      </div>
       <h1 class="hero__names">
         <span class="hero__name gold-text">Jemimah Nirmala Chinta</span>
-        <span class="hero__weds">weds</span>
+        <span class="hero__weds">&amp;</span>
         <span class="hero__name gold-text">Joel Raj Vemuri</span>
       </h1>
+      <p class="hero__invite">Together with our families, we joyfully give our hearts to each other, united in prayer and in Christ.</p>
       <p class="hero__date">16 <span aria-hidden="true">·</span> October <span aria-hidden="true">·</span> 2032</p>
       <svg class="divider" aria-hidden="true"><use href="#ico-divider"/></svg>
       <blockquote class="hero__verse">
@@ -120,8 +175,8 @@
   <main>
     <section class="section section--cream" id="countdown" aria-labelledby="countdown-title">
       <div class="container">
-        <p class="kicker">Until we say “I do”</p>
-        <h2 class="section__title gold-text" id="countdown-title">Counting the Days</h2>
+        <p class="kicker">Counting down with joy &amp; thanksgiving</p>
+        <h2 class="section__title gold-text" id="countdown-title">Until We Say “I Do”</h2>
         <svg class="divider" aria-hidden="true"><use href="#ico-divider"/></svg>
         <div class="countdown" id="countdown-clock" role="timer" aria-live="off">
           <div class="countdown__unit"><span class="countdown__num" data-unit="days">0</span><span class="countdown__label">Days</span></div>
@@ -130,12 +185,33 @@
           <div class="countdown__unit"><span class="countdown__num" data-unit="seconds">00</span><span class="countdown__label">Seconds</span></div>
         </div>
         <p class="countdown__done" id="countdown-done" hidden></p>
-        <p class="countdown__caption" id="countdown-caption">until Saturday, 16 October 2032</p>
+        <p class="countdown__caption" id="countdown-caption">Saturday, 16 October 2032</p>
         <p class="tally" id="yes-tally"></p>
       </div>
     </section>
 
-    <section class="section" id="today" aria-labelledby="today-title">
+    <section class="section matrimony" id="matrimony" aria-labelledby="matrimony-title">
+      <div class="container">
+        <p class="kicker">Holy Matrimony</p>
+        <h2 class="section__title gold-text" id="matrimony-title">Jemimah &amp; Joel</h2>
+        <p class="matrimony__tag">United in Christ <span aria-hidden="true">•</span> Bound in Eternal Love</p>
+        <svg class="divider" aria-hidden="true"><use href="#ico-divider"/></svg>
+        <div class="grid grid--3 quotes">
+          <figure class="card quote">
+            <blockquote class="verse verse--feature"><p>The LORD is good to all, And His tender mercies are over all His works.</p><cite>Psalm 145:9</cite></blockquote>
+          </figure>
+          <figure class="card quote">
+            <blockquote class="verse verse--feature"><p>Strength and honor are her clothing; She shall rejoice in time to come.</p><cite>Proverbs 31:25</cite></blockquote>
+          </figure>
+          <figure class="card quote">
+            <blockquote class="verse verse--feature"><p>And now abide faith, hope, love, these three; but the greatest of these is love.</p><cite>1 Corinthians 13:13</cite></blockquote>
+          </figure>
+        </div>
+        <p class="note">We ask the Lord to pour out His blessing and grace upon us as we begin our sacred journey as one.</p>
+      </div>
+    </section>
+
+    <section class="section section--cream" id="today" aria-labelledby="today-title">
       <div class="container">
         <p class="kicker" id="today-date">Today</p>
         <h2 class="section__title gold-text" id="today-title">Today’s Word for Us</h2>
@@ -155,7 +231,7 @@
       </div>
     </section>
 
-    <section class="section section--cream" id="pillars" aria-labelledby="pillars-title">
+    <section class="section" id="pillars" aria-labelledby="pillars-title">
       <div class="container">
         <p class="kicker">What our marriage stands on</p>
         <h2 class="section__title gold-text" id="pillars-title">The Three Pillars of Marriage</h2>
@@ -164,7 +240,7 @@
       </div>
     </section>
 
-    <section class="section" id="roles" aria-labelledby="roles-title">
+    <section class="section section--cream" id="roles" aria-labelledby="roles-title">
       <div class="container">
         <p class="kicker">Ephesians 5 · 1 Peter 3 · Proverbs 31</p>
         <h2 class="section__title gold-text" id="roles-title">Our Roles in Christ</h2>
@@ -173,7 +249,7 @@
       </div>
     </section>
 
-    <section class="section section--cream" id="promises" aria-labelledby="promises-title">
+    <section class="section" id="promises" aria-labelledby="promises-title">
       <div class="container">
         <p class="kicker">Before God and each other</p>
         <h2 class="section__title gold-text" id="promises-title">Our Promises</h2>
@@ -182,7 +258,7 @@
       </div>
     </section>
 
-    <section class="section" id="verses" aria-labelledby="verses-title">
+    <section class="section section--cream" id="verses" aria-labelledby="verses-title">
       <div class="container">
         <p class="kicker">Hidden in our hearts</p>
         <h2 class="section__title gold-text" id="verses-title">Verses for Our Bond</h2>
@@ -198,13 +274,19 @@
     <p class="footer__names">Jemimah <span class="amp">&amp;</span> Joel</p>
     <p class="footer__verse">“…a threefold cord is not quickly broken.” <cite>Ecclesiastes 4:12</cite></p>
     <p class="footer__date">16 · 10 · 2032 · Us, together with Christ</p>
+    <div class="footer__actions">
+      <button type="button" class="btn btn--ghost" id="share-btn">Share our page</button>
+      <button type="button" class="btn btn--ghost" id="replay-btn">Replay envelope opening</button>
+    </div>
+    <p class="toast" id="toast" role="status" aria-live="polite"></p>
     <p class="footer__legal">Scripture taken from the New King James Version®. Copyright © 1982 by Thomas Nelson. Used by permission. All rights reserved.</p>
   </footer>
 
   <!-- Our song -->
   <button type="button" class="music" id="music-btn" aria-label="Play our song" aria-pressed="false">
-    <svg class="music__icon music__icon--note" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 18.5a3 3 0 1 1-2-2.83V5.5l11-2.5v12.5a3 3 0 1 1-2-2.83V7.6l-7 1.6v9.3z"/></svg>
+    <svg class="music__icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 18.5a3 3 0 1 1-2-2.83V5.5l11-2.5v12.5a3 3 0 1 1-2-2.83V7.6l-7 1.6v9.3z"/></svg>
     <span class="music__bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    <span class="music__hint" aria-hidden="true">Tap for our song</span>
   </button>
   <a class="music-link" id="music-link" href="https://www.youtube.com/watch?v=SuPCTBmISzQ&amp;t=47s" target="_blank" rel="noopener" hidden>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 18.5a3 3 0 1 1-2-2.83V5.5l11-2.5v12.5a3 3 0 1 1-2-2.83V7.6l-7 1.6v9.3z"/></svg>

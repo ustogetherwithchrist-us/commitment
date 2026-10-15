@@ -4,12 +4,24 @@
   var C = window.CONTENT;
   var WEDDING = new Date(2032, 9, 16, 0, 0, 0); // 16 Oct 2032, midnight local time
   var DAY_MS = 864e5;
-  var SONG_ID = "SuPCTBmISzQ";
-  var SONG_START = 47; // seconds
   var YES_KEY = "jj-said-yes";
+
+  var SONG = {
+    youtubeId: "SuPCTBmISzQ",
+    start: 47, // seconds into the song where playback (and every loop) begins
+    // Optional: put your own copy of the song at this path and the visualiser
+    // will listen to the real audio instead of following the beat.
+    file: "audio/song.mp3",
+    // Used with YouTube, where browsers do not let a page hear the audio:
+    // the visualiser pulses on this beat, locked to the song's playback time.
+    bpm: 72,
+    beatOffset: 0 // seconds; nudge so the pulses land on the downbeat
+  };
+
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function $(sel) { return document.querySelector(sel); }
+  function noop() {}
 
   function el(tag, className, text) {
     var node = document.createElement(tag);
@@ -195,7 +207,7 @@
     var done = $("#countdown-done");
     var caption = $("#countdown-caption");
 
-    caption.textContent = "until " + WEDDING.toLocaleDateString("en-GB", {
+    caption.textContent = WEDDING.toLocaleDateString("en-GB", {
       weekday: "long", day: "numeric", month: "long", year: "numeric"
     });
 
@@ -249,78 +261,158 @@
   }
 
   function showTally(days) {
-    var tally = $("#yes-tally");
-    tally.textContent = days ? "♥ You have said yes on " + plural(days, "day") + " ♥" : "";
+    $("#yes-tally").textContent = days ? "♥ You have said yes on " + plural(days, "day") + " ♥" : "";
   }
 
-  /* ---------- Music (YouTube IFrame API) ---------- */
+  /* ---------- Music ----------
+   * Starts playing muted as soon as the page loads (the only autoplay browsers allow),
+   * then the sound comes on with the first tap anywhere, usually the wax seal.
+   */
 
-  var music = { player: null, ready: false, wantPlay: false, failed: false, timer: null };
+  var music = {
+    kind: null, // "file" | "yt"
+    ready: false,
+    playing: false,
+    muted: true,
+    wantSound: false,
+    userPaused: false,
+    failed: false,
+    yt: null,
+    audio: null,
+    ctx: null,
+    analyser: null,
+    bins: null,
+    anchorT: 0,
+    anchorWall: 0,
+    lastRaw: -1
+  };
   var musicBtn = $("#music-btn");
   var musicLink = $("#music-link");
 
-  function setPlaying(on) {
-    musicBtn.classList.toggle("is-playing", on);
-    musicBtn.setAttribute("aria-pressed", on ? "true" : "false");
-    musicBtn.setAttribute("aria-label", on ? "Pause our song" : "Play our song");
+  function updateMusicUI() {
+    var audible = music.playing && !music.muted;
+    musicBtn.classList.toggle("is-playing", audible);
+    musicBtn.classList.toggle("is-muted", !music.failed && !audible && !music.userPaused);
+    musicBtn.setAttribute("aria-pressed", audible ? "true" : "false");
+    musicBtn.setAttribute("aria-label", audible ? "Pause our song" : "Play our song");
   }
 
   function musicFallback() {
+    if (music.kind === "file") {
+      // The file could not play; try YouTube before giving up.
+      music.kind = null;
+      startYouTube();
+      return;
+    }
     music.failed = true;
     musicBtn.hidden = true;
     musicLink.hidden = false;
   }
 
-  function musicRestore() {
-    music.failed = false;
-    musicBtn.hidden = false;
-    musicLink.hidden = true;
-  }
-
-  function playSong() {
-    music.wantPlay = true;
-    if (!music.ready || music.failed) return;
-    music.player.unMute();
-    music.player.playVideo();
+  function soundOn() {
+    music.wantSound = true;
+    music.userPaused = false;
+    if (music.failed || !music.ready) { updateMusicUI(); return; }
+    if (music.kind === "file") {
+      connectAnalyser();
+      music.audio.muted = false;
+      music.muted = false;
+      var p = music.audio.play();
+      if (p && p.catch) p.catch(noop);
+    } else {
+      music.yt.unMute();
+      music.yt.setVolume(85);
+      music.yt.playVideo();
+      music.muted = false;
+    }
+    updateMusicUI();
   }
 
   function pauseSong() {
-    music.wantPlay = false;
-    if (music.ready) music.player.pauseVideo();
-    setPlaying(false);
+    music.userPaused = true;
+    if (music.kind === "file") music.audio.pause();
+    else if (music.ready) music.yt.pauseVideo();
+    music.playing = false;
+    updateMusicUI();
   }
 
-  function initMusic() {
-    musicBtn.addEventListener("click", function () {
-      if (musicBtn.classList.contains("is-playing")) pauseSong();
-      else playSong();
+  function startFile() {
+    var a = new Audio();
+    music.kind = "file";
+    music.audio = a;
+    a.preload = "auto";
+    a.muted = true;
+    a.playsInline = true;
+    a.setAttribute("playsinline", "");
+    a.addEventListener("loadedmetadata", function () {
+      if (a.duration > SONG.start) a.currentTime = SONG.start;
     });
+    a.addEventListener("ended", function () {
+      a.currentTime = SONG.start;
+      a.play().catch(noop);
+    });
+    a.addEventListener("playing", function () { music.playing = true; updateMusicUI(); });
+    a.addEventListener("pause", function () { music.playing = false; updateMusicUI(); });
+    a.addEventListener("error", musicFallback);
+    a.src = SONG.file;
+    music.ready = true;
+    a.play().catch(noop); // muted autoplay
+    if (music.wantSound) soundOn();
+  }
 
+  function connectAnalyser() {
+    if (music.ctx) {
+      if (music.ctx.state === "suspended") music.ctx.resume();
+      return;
+    }
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try {
+      var ctx = new AC();
+      var src = ctx.createMediaElementSource(music.audio);
+      var an = ctx.createAnalyser();
+      an.fftSize = 512;
+      an.smoothingTimeConstant = 0.78;
+      src.connect(an);
+      an.connect(ctx.destination);
+      music.ctx = ctx;
+      music.analyser = an;
+      music.bins = new Uint8Array(an.frequencyBinCount);
+    } catch (e) { /* visualiser falls back to the beat */ }
+  }
+
+  function startYouTube() {
+    music.kind = "yt";
     window.onYouTubeIframeAPIReady = function () {
-      music.player = new window.YT.Player("yt-player", {
+      music.yt = new window.YT.Player("yt-player", {
         width: "200",
         height: "200",
-        videoId: SONG_ID,
-        playerVars: { start: SONG_START, autoplay: 0, controls: 0, disablekb: 1, playsinline: 1, rel: 0, fs: 0 },
+        videoId: SONG.youtubeId,
+        playerVars: { start: SONG.start, autoplay: 1, mute: 1, controls: 0, disablekb: 1, playsinline: 1, rel: 0, fs: 0 },
         events: {
           onReady: function () {
             music.ready = true;
             clearTimeout(music.timer);
-            musicRestore();
-            music.player.setVolume(85);
-            if (music.wantPlay) playSong();
+            music.failed = false;
+            musicBtn.hidden = false;
+            musicLink.hidden = true;
+            music.yt.mute();
+            music.yt.playVideo();
+            if (music.wantSound) soundOn();
           },
           onStateChange: function (e) {
             var S = window.YT.PlayerState;
             if (e.data === S.ENDED) {
               // Loop from the chosen moment rather than the very start.
-              music.player.seekTo(SONG_START, true);
-              music.player.playVideo();
+              music.yt.seekTo(SONG.start, true);
+              music.yt.playVideo();
             } else if (e.data === S.PLAYING) {
-              setPlaying(true);
+              music.playing = true;
+              music.muted = music.yt.isMuted();
             } else if (e.data === S.PAUSED) {
-              setPlaying(false);
+              music.playing = false;
             }
+            updateMusicUI();
           },
           // 101 / 150: the video owner does not allow embedding; 2 / 5 / 100: invalid or unavailable.
           onError: musicFallback
@@ -336,6 +428,373 @@
 
     // If YouTube never answers (blocked network), offer the direct link instead.
     music.timer = setTimeout(function () { if (!music.ready) musicFallback(); }, 15000);
+  }
+
+  // Current position in the song, smoothed between YouTube's coarse updates.
+  function songTime(now) {
+    if (music.kind === "file") return music.audio.currentTime;
+    if (!music.yt || !music.yt.getCurrentTime) return 0;
+    var raw = music.yt.getCurrentTime() || 0;
+    if (raw !== music.lastRaw) {
+      music.lastRaw = raw;
+      music.anchorT = raw;
+      music.anchorWall = now;
+    }
+    var t = music.anchorT + (music.playing ? (now - music.anchorWall) / 1000 : 0);
+    return Math.abs(t - raw) > 1 ? raw : t;
+  }
+
+  function initMusic() {
+    musicBtn.addEventListener("click", function () {
+      if (music.playing && !music.muted) pauseSong();
+      else soundOn();
+    });
+
+    // The first tap or key press anywhere turns the sound on.
+    var gestures = ["click", "touchend", "keydown"];
+    function firstGesture(e) {
+      if (musicBtn.contains(e.target) || musicLink.contains(e.target)) return;
+      if (music.userPaused) return;
+      soundOn();
+      if (!music.muted) gestures.forEach(function (g) { document.removeEventListener(g, firstGesture, true); });
+    }
+    gestures.forEach(function (g) { document.addEventListener(g, firstGesture, true); });
+
+    fetch(SONG.file, { method: "HEAD", cache: "no-store" })
+      .then(function (r) {
+        var type = r.headers.get("content-type") || "";
+        if (r.ok && type.indexOf("audio") === 0) startFile();
+        else startYouTube();
+      })
+      .catch(startYouTube);
+
+    updateMusicUI();
+  }
+
+  /* ---------- Visualiser: a rose window of gold petals and drifting candle-light ---------- */
+
+  var BANDS = 24;
+  var viz = {
+    levels: new Float32Array(BANDS),
+    target: new Float32Array(BANDS),
+    bass: 0,
+    energy: 0,
+    pulse: 0,
+    avgBass: 0.2,
+    lastBeatAt: 0,
+    lastBeatIdx: null,
+    ripples: [],
+    sparkles: []
+  };
+
+  function synthLevels(t) {
+    var spb = 60 / SONG.bpm;
+    var b = (t - SONG.beatOffset) / spb;
+    var idx = Math.floor(b);
+    var ph = b - idx;
+    var bar = ((idx % 4) + 4) % 4;
+    var accent = bar === 0 ? 1 : bar === 2 ? 0.82 : 0.62;
+    var kick = Math.exp(-ph * 5.5) * accent;
+    var h = b * 2 - Math.floor(b * 2);
+    var shimmer = Math.exp(-h * 8);
+    var swell = 0.78 + 0.22 * Math.sin((2 * Math.PI * t) / (spb * 16));
+    for (var i = 0; i < BANDS; i++) {
+      var f = i / (BANDS - 1);
+      var v = (1 - f) * (0.22 + 0.78 * kick) + f * (0.18 + 0.45 * shimmer);
+      v += 0.16 * (0.5 + 0.5 * Math.sin(t * (0.9 + i * 0.41) + i * 1.7));
+      viz.target[i] = Math.min(1, v * swell);
+    }
+    if (viz.lastBeatIdx !== null && idx !== viz.lastBeatIdx) onBeat(accent);
+    viz.lastBeatIdx = idx;
+  }
+
+  function analysedLevels(now) {
+    var an = music.analyser;
+    var bins = music.bins;
+    an.getByteFrequencyData(bins);
+    var maxBin = Math.min(bins.length, 170);
+    for (var i = 0; i < BANDS; i++) {
+      var lo = Math.floor(Math.pow(maxBin, i / BANDS));
+      var hi = Math.max(lo + 1, Math.floor(Math.pow(maxBin, (i + 1) / BANDS)));
+      var peak = 0;
+      for (var k = lo; k < hi && k < bins.length; k++) if (bins[k] > peak) peak = bins[k];
+      viz.target[i] = Math.pow(peak / 255, 1.4);
+    }
+    var bass = (viz.target[0] + viz.target[1] + viz.target[2] + viz.target[3]) / 4;
+    viz.avgBass = viz.avgBass * 0.96 + bass * 0.04;
+    if (bass > viz.avgBass * 1.22 && bass > 0.25 && now - viz.lastBeatAt > 300) {
+      viz.lastBeatAt = now;
+      onBeat(Math.min(1, bass * 1.2));
+    }
+  }
+
+  function idleLevels(now) {
+    for (var i = 0; i < BANDS; i++) {
+      viz.target[i] = 0.12 + 0.06 * Math.sin(now / 1400 + i * 0.6);
+    }
+  }
+
+  function onBeat(strength) {
+    viz.pulse = Math.max(viz.pulse, strength);
+    viz.ripples.push({ born: performance.now(), strength: strength });
+    if (viz.ripples.length > 6) viz.ripples.shift();
+    if (strength > 0.8) spawnSparkles(2);
+  }
+
+  function updateLevels(now) {
+    if (music.playing && music.kind === "file" && music.analyser && !music.muted) analysedLevels(now);
+    else if (music.playing) synthLevels(songTime(now));
+    else idleLevels(now);
+
+    var sumB = 0;
+    var sumE = 0;
+    for (var i = 0; i < BANDS; i++) {
+      var cur = viz.levels[i];
+      var tgt = viz.target[i];
+      viz.levels[i] = cur + (tgt - cur) * (tgt > cur ? 0.45 : 0.12);
+      sumE += viz.levels[i];
+      if (i < 4) sumB += viz.levels[i];
+    }
+    viz.bass = sumB / 4;
+    viz.energy = sumE / BANDS;
+    viz.pulse *= 0.93;
+  }
+
+  // Mirror the bands around the circle so the rosette blooms symmetrically.
+  function bandAt(i, n) {
+    var x = Math.abs(((i / n) * 6) % 2 - 1); // 0..1..0 six times around
+    return viz.levels[Math.round((1 - x) * (BANDS - 1))];
+  }
+
+  function fitCanvas(canvas) {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = canvas.clientWidth;
+    var h = canvas.clientHeight;
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+    }
+    var ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx: ctx, w: w, h: h };
+  }
+
+  function petal(ctx, base, len, width) {
+    ctx.beginPath();
+    ctx.moveTo(base, 0);
+    ctx.bezierCurveTo(base + len * 0.3, -width, base + len * 0.8, -width * 0.7, base + len, 0);
+    ctx.bezierCurveTo(base + len * 0.8, width * 0.7, base + len * 0.3, width, base, 0);
+    ctx.closePath();
+  }
+
+  function drawRosette(canvas, now) {
+    var c = fitCanvas(canvas);
+    var ctx = c.ctx;
+    var cx = c.w / 2;
+    var cy = c.h / 2;
+    var R = Math.min(c.w, c.h) / 2;
+    ctx.clearRect(0, 0, c.w, c.h);
+
+    // Soft halo of candle-light
+    var halo = ctx.createRadialGradient(cx, cy, R * 0.25, cx, cy, R);
+    halo.addColorStop(0, "rgba(246, 227, 166, " + (0.22 + 0.4 * viz.pulse).toFixed(3) + ")");
+    halo.addColorStop(1, "rgba(246, 227, 166, 0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rings of gold dust that spread outward on each beat
+    ctx.setLineDash([1.5, 5]);
+    for (var r = viz.ripples.length - 1; r >= 0; r--) {
+      var rp = viz.ripples[r];
+      var p = (now - rp.born) / 1800;
+      if (p >= 1) { viz.ripples.splice(r, 1); continue; }
+      ctx.strokeStyle = "rgba(184, 137, 59, " + ((1 - p) * 0.7 * rp.strength).toFixed(3) + ")";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * (0.5 + 0.48 * p), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // Outer petals
+    var N = 36;
+    var rot = now * 0.00005;
+    for (var i = 0; i < N; i++) {
+      var lvl = 0.55 * viz.bass + 0.45 * bandAt(i, N);
+      ctx.save();
+      ctx.rotate(rot + (i * Math.PI * 2) / N);
+      petal(ctx, R * 0.4, R * (0.14 + 0.42 * lvl), R * (0.045 + 0.03 * lvl));
+      ctx.fillStyle = "rgba(214, 176, 92, " + (0.22 + 0.55 * lvl).toFixed(3) + ")";
+      ctx.fill();
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = "rgba(138, 102, 40, " + (0.35 + 0.4 * lvl).toFixed(3) + ")";
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Inner petals, turning the other way
+    var M = 16;
+    for (var j = 0; j < M; j++) {
+      ctx.save();
+      ctx.rotate(-rot * 1.6 + (j * Math.PI * 2) / M + Math.PI / M);
+      petal(ctx, R * 0.31, R * (0.1 + 0.16 * viz.bass), R * 0.05);
+      ctx.fillStyle = "rgba(240, 216, 150, " + (0.35 + 0.5 * viz.bass).toFixed(3) + ")";
+      ctx.fill();
+      ctx.lineWidth = 0.7;
+      ctx.strokeStyle = "rgba(165, 122, 46, 0.55)";
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Pearls around the edge, twinkling with the high notes
+    var D = 64;
+    for (var k = 0; k < D; k++) {
+      var tw = bandAt(k + 8, D);
+      var a = (k * Math.PI * 2) / D + rot * 0.5;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * R * 0.95, Math.sin(a) * R * 0.95, 0.8 + 1.8 * tw, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(184, 137, 59, " + (0.25 + 0.7 * tw).toFixed(3) + ")";
+      ctx.fill();
+    }
+
+    // Ivory centre for the rings
+    ctx.beginPath();
+    ctx.arc(0, 0, R * 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255, 253, 248, 0.96)";
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(184, 137, 59, 0.6)";
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, R * 0.27, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(184, 137, 59, 0.3)";
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // Drifting lights like candles seen through a veil
+  var orbs = [];
+  var orbSprite = null;
+
+  function makeOrbSprite() {
+    var s = document.createElement("canvas");
+    s.width = s.height = 64;
+    var g = s.getContext("2d");
+    var grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, "rgba(255, 244, 210, 1)");
+    grad.addColorStop(0.35, "rgba(240, 210, 140, 0.55)");
+    grad.addColorStop(1, "rgba(230, 199, 122, 0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    return s;
+  }
+
+  function initOrbs(w, h) {
+    orbs = [];
+    var count = w < 600 ? 16 : 28;
+    for (var i = 0; i < count; i++) {
+      orbs.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: 8 + Math.random() * 26,
+        vy: 0.08 + Math.random() * 0.22,
+        sway: Math.random() * Math.PI * 2,
+        band: Math.floor(Math.random() * BANDS),
+        base: 0.12 + Math.random() * 0.2
+      });
+    }
+  }
+
+  function spawnSparkles(n) {
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    for (var i = 0; i < n; i++) {
+      viz.sparkles.push({ x: Math.random() * w, y: Math.random() * h * 0.9, born: performance.now(), size: 6 + Math.random() * 8 });
+    }
+  }
+
+  function star(ctx, x, y, s) {
+    ctx.beginPath();
+    ctx.moveTo(x, y - s);
+    ctx.quadraticCurveTo(x, y, x + s, y);
+    ctx.quadraticCurveTo(x, y, x, y + s);
+    ctx.quadraticCurveTo(x, y, x - s, y);
+    ctx.quadraticCurveTo(x, y, x, y - s);
+    ctx.closePath();
+  }
+
+  function drawAmbient(canvas, now) {
+    var c = fitCanvas(canvas);
+    var ctx = c.ctx;
+    if (!orbs.length) initOrbs(c.w, c.h);
+    ctx.clearRect(0, 0, c.w, c.h);
+
+    for (var i = 0; i < orbs.length; i++) {
+      var o = orbs[i];
+      o.y -= o.vy * (1 + viz.energy * 2);
+      o.sway += 0.004;
+      if (o.y < -o.r * 2) { o.y = c.h + o.r * 2; o.x = Math.random() * c.w; }
+      var lvl = viz.levels[o.band];
+      var size = o.r * (1 + 0.5 * lvl + 0.3 * viz.pulse);
+      ctx.globalAlpha = Math.min(0.75, o.base + 0.35 * lvl + 0.15 * viz.pulse);
+      ctx.drawImage(orbSprite, o.x + Math.sin(o.sway) * 20 - size, o.y - size, size * 2, size * 2);
+    }
+
+    for (var s = viz.sparkles.length - 1; s >= 0; s--) {
+      var sp = viz.sparkles[s];
+      var p = (now - sp.born) / 1100;
+      if (p >= 1) { viz.sparkles.splice(s, 1); continue; }
+      var k = Math.sin(p * Math.PI);
+      ctx.globalAlpha = k * 0.9;
+      ctx.drawImage(orbSprite, sp.x - sp.size * 2, sp.y - sp.size * 2, sp.size * 4, sp.size * 4);
+      star(ctx, sp.x, sp.y, sp.size * k);
+      ctx.fillStyle = "#E9C77B";
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function initVisualiser() {
+    var rosette = $("#rosette");
+    var ambient = $("#ambient");
+    var clock = $("#countdown-clock");
+    var bars = musicBtn.querySelectorAll(".music__bars i");
+
+    if (reduceMotion) {
+      idleLevels(0);
+      viz.levels.set(viz.target);
+      drawRosette(rosette, 0);
+      return;
+    }
+
+    orbSprite = makeOrbSprite();
+    window.addEventListener("resize", function () { orbs = []; });
+
+    var lastPulse = -1;
+    function frame(now) {
+      updateLevels(now);
+      drawRosette(rosette, now);
+      drawAmbient(ambient, now);
+
+      var pulse = Math.round(viz.pulse * 50) / 50;
+      if (pulse !== lastPulse) {
+        clock.style.setProperty("--pulse", pulse);
+        lastPulse = pulse;
+      }
+      if (musicBtn.classList.contains("is-playing")) {
+        for (var b = 0; b < bars.length; b++) {
+          bars[b].style.transform = "scaleY(" + (0.25 + 0.75 * viz.levels[2 + b * 5]).toFixed(2) + ")";
+        }
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
   }
 
   /* ---------- Petals ---------- */
@@ -357,10 +816,10 @@
 
   function burst(x, y) {
     if (reduceMotion) return;
-    for (var i = 0; i < 36; i++) {
+    for (var i = 0; i < 40; i++) {
       var s = el("span", "spark");
       var angle = Math.random() * Math.PI * 2;
-      var dist = 80 + Math.random() * 180;
+      var dist = 80 + Math.random() * 200;
       s.style.left = x + "px";
       s.style.top = y + "px";
       s.style.setProperty("--x", (Math.cos(angle) * dist).toFixed(0) + "px");
@@ -371,32 +830,66 @@
     }
   }
 
-  /* ---------- The proposal ---------- */
+  /* ---------- Envelope + proposal ---------- */
+
+  var proposal = {};
 
   function initProposal() {
     var overlay = $("#proposal");
+    var stage = $("#envelope-stage");
+    var seal = $("#seal");
+    var card = $("#proposal-card");
     var question = $("#proposal-question");
     var tally = $("#proposal-tally");
-    var buttons = overlay.querySelectorAll("[data-yes]");
-    var state = yesState();
-    var today = dateKey(new Date());
+    var buttons = card.querySelectorAll("[data-yes]");
+    var timers = [];
 
-    if (state.last === today) tally.textContent = "You already said yes today. Say it once more ♥";
-    else if (state.days > 0) tally.textContent = "You have said yes on " + plural(state.days, "day") + " so far ♥";
+    function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+
+    function reset() {
+      timers.forEach(clearTimeout);
+      timers = [];
+      overlay.classList.remove("is-closing", "is-answered");
+      stage.classList.remove("is-open", "is-gone");
+      stage.hidden = false;
+      card.hidden = true;
+      question.textContent = "Will you marry me?";
+      var state = yesState();
+      if (state.last === dateKey(new Date())) tally.textContent = "You already said yes today. Say it once more ♥";
+      else if (state.days > 0) tally.textContent = "You have said yes on " + plural(state.days, "day") + " so far ♥";
+      else tally.textContent = "";
+      overlay.hidden = false;
+      document.body.classList.add("is-locked");
+      seal.focus({ preventScroll: true });
+    }
+
+    function openEnvelope() {
+      if (stage.classList.contains("is-open")) return;
+      soundOn(); // the seal tap is the gesture that lets the sound play
+      stage.classList.add("is-open");
+      var r = seal.getBoundingClientRect();
+      burst(r.left + r.width / 2, r.top + r.height / 2);
+      later(function () { stage.classList.add("is-gone"); }, reduceMotion ? 100 : 2100);
+      later(function () {
+        stage.hidden = true;
+        card.hidden = false;
+        buttons[0].focus({ preventScroll: true });
+      }, reduceMotion ? 200 : 2600);
+    }
 
     function close() {
       overlay.classList.add("is-closing");
       document.body.classList.remove("is-locked");
-      setTimeout(function () { overlay.hidden = true; }, 900);
+      later(function () { overlay.hidden = true; }, 900);
     }
+
+    seal.addEventListener("click", openEnvelope);
 
     buttons.forEach(function (btn) {
       btn.addEventListener("click", function (e) {
         if (overlay.classList.contains("is-answered")) return;
         overlay.classList.add("is-answered");
-
-        // Start the song inside the tap itself: browsers only allow sound after a user gesture.
-        playSong();
+        soundOn();
 
         var days = recordYes();
         question.textContent = "Yes! Forever, in Christ ♥";
@@ -405,20 +898,49 @@
 
         var rect = btn.getBoundingClientRect();
         burst(e.clientX || rect.left + rect.width / 2, e.clientY || rect.top + rect.height / 2);
-        setTimeout(close, reduceMotion ? 300 : 1400);
+        later(close, reduceMotion ? 300 : 1400);
       });
     });
 
-    // Keep keyboard focus inside the pop-up while it is open.
+    // Keep keyboard focus inside the overlay while it is open.
     overlay.addEventListener("keydown", function (e) {
       if (e.key !== "Tab") return;
-      var first = buttons[0];
-      var last = buttons[buttons.length - 1];
+      var focusables = card.hidden ? [seal] : Array.prototype.slice.call(buttons);
+      var first = focusables[0];
+      var last = focusables[focusables.length - 1];
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     });
 
-    buttons[0].focus({ preventScroll: true });
+    proposal.replay = function () {
+      window.scrollTo({ top: 0 });
+      reset();
+    };
+
+    reset();
+  }
+
+  /* ---------- Footer actions ---------- */
+
+  function initFooter() {
+    var toast = $("#toast");
+    function say(msg) {
+      toast.textContent = msg;
+      setTimeout(function () { if (toast.textContent === msg) toast.textContent = ""; }, 3500);
+    }
+
+    $("#share-btn").addEventListener("click", function () {
+      var data = { title: document.title, text: "Jemimah & Joel · United in Christ, bound in eternal love", url: location.href.split("#")[0] };
+      if (navigator.share) {
+        navigator.share(data).catch(noop);
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(data.url).then(function () { say("Link copied ♥"); }, function () { say(data.url); });
+      } else {
+        say(data.url);
+      }
+    });
+
+    $("#replay-btn").addEventListener("click", function () { proposal.replay(); });
   }
 
   /* ---------- Start ---------- */
@@ -432,5 +954,7 @@
   showTally(yesState().days);
   initMusic();
   initPetals();
+  initVisualiser();
   initProposal();
+  initFooter();
 })();

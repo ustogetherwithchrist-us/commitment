@@ -4,8 +4,9 @@
 
 A small website for the two of us to open every day:
 
-- A **"Will you marry me?"** pop-up each time the site opens. Saying yes starts our song.
-- **Our song** ([YouTube](https://www.youtube.com/watch?v=SuPCTBmISzQ&t=47s)) plays on a loop from 0:47. Use the gold ♪ button to pause or resume.
+- A **sealed envelope** each time the site opens: tap the wax seal, the letter rises, and it asks **"Will you marry me?"**
+- **Our song** ([YouTube](https://www.youtube.com/watch?v=SuPCTBmISzQ&t=47s)) starts by itself, muted, as the page loads, and the sound comes on with the first tap (the seal). It loops from 0:47. Use the gold ♪ button to pause or resume.
+- A **music visualiser** in wedding style: a rose window of gold petals around the rings that blooms with the music, rings of gold dust on each beat, and drifting candle-light.
 - A **countdown** to 16 October 2032.
 - A **verse of the day** and **promise of the day**, the same for both of us and changing at midnight.
 - **The three pillars of marriage:** lifelong fellowship to grow closer to Christ, intimacy within marriage, and offspring.
@@ -30,6 +31,12 @@ Free GitHub Pages needs the repository to be **public**, so anyone with the link
 - **Wedding date / song:** the constants at the top of `js/main.js` (`WEDDING`, `SONG_ID`, `SONG_START`).
 - **Colors and fonts:** the variables at the top of `css/style.css`.
 
+### About the music visualiser
+
+Browsers don't let a website listen to a YouTube video's sound, so with YouTube the visualiser pulses on the song's beat, kept in step with where the song is playing. Set the tempo with `bpm` (and `beatOffset`) in `SONG` at the top of `js/main.js`.
+
+To make it react to the real audio instead, put your own copy of the song at `audio/song.mp3`. The site then plays that file (from 0:47, looping) and the petals respond to the actual sound.
+
 ### About the music
 
-Browsers don't let a page play sound until someone taps it, so the song starts when you tap **Yes**. If YouTube can't be reached, or the video's owner has turned off embedding, the ♪ button becomes a **"Play our song on YouTube"** link instead.
+Browsers don't let a page play sound until someone taps it, so the song starts playing muted and the sound comes on with your first tap. If YouTube can't be reached, or the video's owner has turned off embedding, the ♪ button becomes a **"Play our song on YouTube"** link instead.
