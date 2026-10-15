@@ -7,9 +7,9 @@ A website for the two of us to open every day: to be loved, to stay in love, to 
 ## What's inside
 
 - **A sealed envelope every time it opens.** Tap the wine-red wax seal, the letter rises, and it asks "Will you marry me?" Each "yes" is counted.
-- **Our song.** "Goodness of God" (Bethel Music, instrumental cover) starts playing muted as the page loads. The sound comes on with the first tap (the seal), and the song loops from 0:47. The gold "now playing" button pauses and resumes it.
-- **Until We Say "I Do".** A live countdown to 16 October 2032, the months, weeks and Sundays of worship left, the next milestone (such as 2,000 days to go) and an "Add to calendar" button.
-- **Our Daily Altar.** Each day brings a verse, a promise, a question to talk about, a prayer prompt, and the day's chapter of Proverbs. Both phones show the same ones, and they change at midnight. A "We prayed together today" button keeps count.
+- **Our song.** "Goodness of God" (Bethel Music, instrumental cover by Sudirman Worship) is stored in this repository as `audio/song.mp3`. It starts playing muted as the page loads, and the sound comes on with the first tap (the seal). It loops from 0:12. The gold "now playing" button pauses and resumes it.
+- **Until We Say "I Do".** A live countdown to 16 October 2032, with the months, weeks and Sundays of worship left.
+- **Our Daily Altar.** Each day brings a verse, a promise, a question to talk about, a prayer prompt, and the day's chapter of Proverbs. Both phones show the same ones, and they change at midnight.
 - **Our Bible Plan.** Read the Word together with one of three plans:
   - *Love & Marriage*: 30 hand-picked readings, each with a question to talk about together
   - *The Gospels*: 89 days, a chapter a day
@@ -45,10 +45,10 @@ Free GitHub Pages needs the repository to be **public**, so anyone with the link
 
 Browsers don't let a page play sound until someone taps it. So the song starts playing muted, and the sound comes on with your first tap.
 
-If YouTube can't be reached, or the video's owner turns off embedding, the music button becomes a "Play our song on YouTube" link instead.
+The site plays `audio/song.mp3` from 0:12 and loops it, and the candle-light listens to the music itself. If the file can't play, the site falls back to the [YouTube video](https://www.youtube.com/watch?v=SuPCTBmISzQ&t=12s). If YouTube can't be reached either, the music button becomes a "Play our song on YouTube" link.
 
-Browsers also don't let a website listen to a YouTube video's sound. With YouTube, the candle-light pulses on the song's beat (63 BPM for "Goodness of God"), kept in step with where the song is playing. Adjust it with `bpm` and `beatOffset` in `SONG`. To make the lights react to the real audio, put your own copy of the song at `audio/song.mp3`. The site then plays that file instead, from 0:47 and looping.
+To use a different song, replace `audio/song.mp3` and change `start` and `youtubeId` in `SONG` at the top of `js/main.js`. Browsers don't let a website listen to a YouTube video's sound. So in the YouTube fallback, the lights pulse on the song's beat instead (`bpm`, 63 for "Goodness of God").
 
 ### What is saved where
 
-The yes count, prayer count, checklist ticks, Bible plan progress and kept letters are saved in each phone's browser. They are not shared between your two phones automatically; use "Send our progress" for the Bible plan. Clearing the browser's data removes them.
+The yes count, checklist ticks, Bible plan progress and kept letters are saved in each phone's browser. They are not shared between your two phones automatically; use "Send our progress" for the Bible plan. Clearing the browser's data removes them.

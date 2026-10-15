@@ -5,7 +5,6 @@
   var WEDDING = new Date(2032, 9, 16, 0, 0, 0); // 16 Oct 2032, midnight local time
   var DAY_MS = 864e5;
   var YES_KEY = "jj-said-yes";
-  var PRAY_KEY = "jj-prayed";
   var PREP_KEY = "jj-prep";
   var LETTERS_KEY = "jj-letters";
   var ME_KEY = "jj-me";
@@ -16,11 +15,11 @@
     title: "Goodness of God",
     artist: "Bethel Music",
     youtubeId: "SuPCTBmISzQ",
-    start: 47, // seconds into the song where playback (and every loop) begins
-    // Optional: put your own copy of the song at this path and the visualiser
-    // will listen to the real audio instead of following the beat.
+    start: 12, // seconds into the song where playback (and every loop) begins
+    // Our own copy of the song. The site plays this file, and the visualiser listens to it.
+    // If it can't play, the site falls back to the YouTube video below.
     file: "audio/song.mp3",
-    // Used with YouTube, where browsers do not let a page hear the audio:
+    // Used only for the YouTube fallback, where browsers do not let a page hear the audio:
     // the visualiser pulses on this beat, locked to the song's playback time.
     bpm: 63, // "Goodness of God" is 63 BPM in 4/4
     beatOffset: 0 // seconds; nudge so the pulses land on the downbeat
@@ -229,36 +228,6 @@
     $("#prayer-of-day").textContent = prayer;
     $("#proverb-link").textContent = proverb;
     $("#proverb-link").href = bibleLink(proverb);
-
-    initPrayed();
-  }
-
-  function initPrayed() {
-    var btn = $("#pray-btn");
-    var tally = $("#pray-tally");
-    var today = dateKey(new Date());
-
-    function show() {
-      var data = readStore(PRAY_KEY) || { days: 0, last: null };
-      var done = data.last === today;
-      btn.disabled = done;
-      btn.textContent = done ? "Prayed together today ✓" : "We prayed together today";
-      tally.textContent = data.days ? "Prayed together on " + plural(data.days, "day") + " · saved on this phone" : "";
-    }
-
-    btn.addEventListener("click", function () {
-      var data = readStore(PRAY_KEY) || { days: 0, last: null };
-      if (data.last !== today) {
-        data.days += 1;
-        data.last = today;
-        writeStore(PRAY_KEY, data);
-      }
-      var r = btn.getBoundingClientRect();
-      burst(r.left + r.width / 2, r.top + r.height / 2, 18);
-      show();
-    });
-
-    show();
   }
 
   /* ---------- Countdown ---------- */
@@ -309,8 +278,6 @@
     renderStats();
   }
 
-  var MILESTONES = [2000, 1500, 1000, 750, 500, 365, 300, 200, 100, 50, 30, 14, 7, 1];
-
   function renderStats() {
     var now = new Date();
     var today = dayNumber(now);
@@ -320,7 +287,6 @@
 
     if (left <= 0) {
       $("#stats").hidden = true;
-      $(".calendar-btn").hidden = true;
       top.textContent = left === 0 ? "Our wedding day" : "Married in Christ";
       return;
     }
@@ -333,25 +299,6 @@
     $("#stat-months").textContent = fmtNum(Math.max(0, months));
     $("#stat-weeks").textContent = fmtNum(Math.floor(left / 7));
     $("#stat-sundays").textContent = fmtNum(sundays);
-
-    var line = $("#next-milestone");
-    line.textContent = "";
-    if (MILESTONES.indexOf(left) !== -1) {
-      line.append("Today we are exactly ");
-      line.appendChild(el("strong", null, plural(left, "day").replace(/^\d+/, fmtNum(left))));
-      line.append(" from our wedding ♥");
-      return;
-    }
-    for (var i = 0; i < MILESTONES.length; i++) {
-      var m = MILESTONES[i];
-      if (m < left) {
-        line.append("Next milestone: ");
-        line.appendChild(el("strong", null, fmtNum(m) + " days to go"));
-        line.append(" on " + fmtDay(wedding - m, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) +
-          ", in " + plural(left - m, "day").replace(/^\d+/, fmtNum(left - m)) + ".");
-        return;
-      }
-    }
   }
 
   /* ---------- "Yes" days ---------- */
@@ -486,7 +433,8 @@
     a.addEventListener("error", musicFallback);
     a.src = SONG.file;
     music.ready = true;
-    a.play().catch(noop); // muted autoplay
+    // Browsers block even silent autoplay of an audio file, so the song starts
+    // at the first tap (usually the wax seal), always from SONG.start.
     if (music.wantSound) soundOn();
   }
 
@@ -610,7 +558,9 @@
     bass: 0,
     energy: 0,
     pulse: 0,
-    avgBass: 0.2,
+    prev: new Float32Array(BANDS),
+    ref: 0.2,
+    avgFlux: 0.3,
     lastBeatAt: 0,
     lastBeatIdx: null,
     sparkles: []
@@ -649,12 +599,29 @@
       for (var k = lo; k < hi && k < bins.length; k++) if (bins[k] > peak) peak = bins[k];
       viz.target[i] = Math.pow(peak / 255, 1.4);
     }
-    var bass = (viz.target[0] + viz.target[1] + viz.target[2] + viz.target[3]) / 4;
-    viz.avgBass = viz.avgBass * 0.96 + bass * 0.04;
-    if (bass > viz.avgBass * 1.22 && bass > 0.25 && now - viz.lastBeatAt > 300) {
-      viz.lastBeatAt = now;
-      onBeat(Math.min(1, bass * 1.2));
+
+    // Gentle music is quiet: scale everything to the loudest moment heard recently.
+    var loudest = 0;
+    for (var j = 0; j < BANDS; j++) if (viz.target[j] > loudest) loudest = viz.target[j];
+    viz.ref = Math.max(viz.ref * 0.997, loudest, 0.05);
+
+    // A new note anywhere in the spectrum (piano, strings) shows up as a sudden rise.
+    var flux = 0;
+    var sum = 0;
+    for (var b = 0; b < BANDS; b++) {
+      var v = Math.min(1, viz.target[b] / viz.ref);
+      viz.target[b] = v;
+      sum += v;
+      if (v > viz.prev[b]) flux += v - viz.prev[b];
+      viz.prev[b] = v;
     }
+    viz.avgFlux = viz.avgFlux * 0.95 + flux * 0.05;
+    if (flux > viz.avgFlux * 1.6 + 0.15 && now - viz.lastBeatAt > 280) {
+      viz.lastBeatAt = now;
+      onBeat(Math.min(1, 0.45 + flux * 0.3));
+    }
+    // Between notes the glow breathes with how full the music is.
+    viz.pulse = Math.max(viz.pulse, (sum / BANDS) * 0.4);
   }
 
   function idleLevels(now) {

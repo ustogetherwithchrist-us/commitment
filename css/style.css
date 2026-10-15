@@ -582,8 +582,6 @@ main > .section:nth-of-type(odd) { background: rgba(244, 236, 220, 0.6); border-
 }
 .text-link:hover { color: var(--royal); border-color: var(--royal); }
 
-.pray-btn { padding: 12px 20px; font-size: 0.74rem; letter-spacing: 0.1em; }
-.pray-btn[disabled] { background: transparent; color: var(--gold-deep); border-color: var(--gold); text-shadow: none; box-shadow: none; transform: none; cursor: default; }
 
 /* ---------- Roles ---------- */
 .card--role { text-align: center; }
@@ -801,9 +799,6 @@ main > .section:nth-of-type(odd) { background: rgba(244, 236, 220, 0.6); border-
 .stat { padding: 12px 4px; border-block: 1px solid var(--line); }
 .stat__num { display: block; font-family: var(--caps); font-weight: 600; font-size: clamp(1.25rem, 4.6vw, 1.7rem); font-variant-numeric: tabular-nums; color: var(--royal); }
 .stat__label { display: block; margin-top: 4px; font-family: var(--caps); font-size: 0.6rem; letter-spacing: 0.16em; line-height: 1.4; text-transform: uppercase; color: var(--ink-soft); }
-.milestone { max-width: 44ch; margin: 22px auto 0; font-style: italic; font-size: 1.12rem; text-wrap: balance; }
-.milestone strong { font-style: normal; font-weight: 600; color: var(--royal); }
-.calendar-btn { margin-top: 16px; text-decoration: none; }
 
 /* ---------- Bible plan ---------- */
 .plan-tracks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 36px; }
