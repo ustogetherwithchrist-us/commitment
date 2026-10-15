@@ -28,7 +28,7 @@ Free GitHub Pages needs the repository to be **public**, so anyone with the link
 ## Changing things
 
 - **Verses, promises, pillars, roles:** edit `js/content.js`.
-- **Wedding date / song:** the constants at the top of `js/main.js` (`WEDDING`, `SONG_ID`, `SONG_START`).
+- **Wedding date / song:** the constants at the top of `js/main.js` (`WEDDING` and the `SONG` settings).
 - **Colors and fonts:** the variables at the top of `css/style.css`.
 
 ### About the music visualiser
