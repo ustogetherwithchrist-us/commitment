@@ -131,6 +131,7 @@
         <li><a href="#prepare">Preparing Together</a></li>
         <li><a href="#verses">Verses for Our Bond</a></li>
         <li><a href="#prayer">A Prayer for Us</a></li>
+        <li><a href="#sync" data-open-sync>Sync &amp; backup</a></li>
       </ul>
       <button type="button" class="btn btn--ghost" id="menu-close">Close</button>
     </div>
@@ -502,6 +503,87 @@
     <p class="footer__legal">Scripture taken from the New King James Version®. Copyright © 1982 by Thomas Nelson. Used by permission. All rights reserved.</p>
   </footer>
 
+  <!-- Sync & backup -->
+  <button type="button" class="sync-btn" id="sync-btn" aria-haspopup="dialog" aria-controls="sync-sheet" aria-label="Sync and backup">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M19.5 9.5A7.5 7.5 0 0 0 6 6.2L4.5 7.8M4.5 3.8v4h4M4.5 14.5A7.5 7.5 0 0 0 18 17.8l1.5-1.6M19.5 20.2v-4h-4"/></svg>
+    <span class="sync-btn__dot" id="sync-dot" aria-hidden="true"></span>
+  </button>
+
+  <div class="sheet" id="sync-sheet" role="dialog" aria-modal="true" aria-labelledby="sync-title" hidden>
+    <div class="paper-card sheet__card">
+      <button type="button" class="sheet__close" id="sync-close" aria-label="Close">×</button>
+      <p class="kicker">Sync &amp; backup</p>
+      <h2 class="sheet__title" id="sync-title">Keep us in step</h2>
+      <p class="sheet__status" id="sync-status" role="status" aria-live="polite"></p>
+      <ul class="sheet__summary" id="sync-summary"></ul>
+
+      <section class="sheet__block" id="sync-setup">
+        <h3 class="card__label">Sync both phones</h3>
+        <p class="sheet__text">Your yes days, Bible plan, checklist and love letters are saved in a private file in our GitHub repository, locked with a secret word only the two of you know.</p>
+        <label class="sheet__label" for="sync-token">Our GitHub key</label>
+        <input class="sheet__input" id="sync-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+        <label class="sheet__label" for="sync-secret">Our secret word</label>
+        <input class="sheet__input" id="sync-secret" type="password" autocomplete="off" placeholder="the same on both phones">
+        <button type="button" class="btn btn--gold" id="sync-connect">Connect &amp; sync</button>
+        <details class="sheet__help">
+          <summary>How do we get a GitHub key?</summary>
+          <ol>
+            <li>On GitHub, open <strong>Settings → Developer settings → Personal access tokens → Fine-grained tokens</strong>, then <strong>Generate new token</strong>.</li>
+            <li>Name it “Our sync”, and choose an expiry (up to a year).</li>
+            <li>Under <strong>Repository access</strong>, choose <strong>Only select repositories</strong> → <strong>commitment</strong>.</li>
+            <li>Under <strong>Permissions → Repository permissions</strong>, set <strong>Contents</strong> to <strong>Read and write</strong>.</li>
+            <li>Generate it, copy the key (it starts with <code>github_pat_</code>), and paste it here on both phones, with the same secret word.</li>
+          </ol>
+        </details>
+      </section>
+
+      <section class="sheet__block" id="sync-connected" hidden>
+        <h3 class="card__label">Sync both phones</h3>
+        <p class="sheet__text" id="sync-last"></p>
+        <div class="sheet__row">
+          <button type="button" class="btn btn--gold" id="sync-now">Sync now</button>
+          <label class="switch"><input type="checkbox" id="sync-auto"><span class="switch__track" aria-hidden="true"></span> Auto-sync</label>
+        </div>
+        <button type="button" class="text-link sheet__link" id="sync-disconnect">Disconnect this phone</button>
+      </section>
+
+      <section class="sheet__block">
+        <h3 class="card__label">Backup</h3>
+        <p class="sheet__text">Keep a copy of everything as a file, and bring it back any time.</p>
+        <div class="sheet__row">
+          <button type="button" class="btn btn--ghost" id="backup-download">Download backup</button>
+          <label class="btn btn--ghost" for="backup-file">Restore a backup</label>
+          <input class="visually-hidden" type="file" id="backup-file" accept="application/json,.json">
+        </div>
+      </section>
+
+      <section class="sheet__block">
+        <h3 class="card__label">Updates</h3>
+        <p class="sheet__text">Load the newest version of our page.</p>
+        <button type="button" class="btn btn--ghost" id="site-update">Get the latest version</button>
+      </section>
+
+      <section class="sheet__block">
+        <h3 class="card__label">Delete</h3>
+        <p class="sheet__text">Remove everything saved on this phone. You can download a backup first.</p>
+        <button type="button" class="btn btn--ghost" id="data-delete">Delete data on this phone…</button>
+      </section>
+    </div>
+  </div>
+
+  <div class="sheet" id="confirm-sheet" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-text" hidden>
+    <div class="paper-card sheet__card sheet__card--small">
+      <h2 class="sheet__title" id="confirm-title"></h2>
+      <p class="sheet__text" id="confirm-text"></p>
+      <label class="check confirm__remote" id="confirm-remote-wrap" hidden><input type="checkbox" id="confirm-remote"><span>Also delete our synced copy on GitHub</span></label>
+      <div class="sheet__stack">
+        <button type="button" class="btn btn--gold" id="confirm-backup">Download backup, then delete</button>
+        <button type="button" class="btn btn--ghost" id="confirm-yes">Delete without a backup</button>
+        <button type="button" class="text-link sheet__link" id="confirm-no">Keep it</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Our song -->
   <button type="button" class="music is-expanded" id="music-btn" aria-label="Play our song" aria-pressed="false">
     <span class="music__disc" aria-hidden="true">
@@ -520,6 +602,7 @@
   <div class="yt-wrap" aria-hidden="true"><div id="yt-player"></div></div>
 
   <script src="js/content.js"></script>
+  <script src="js/store.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

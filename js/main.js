@@ -4,11 +4,8 @@
   var C = window.CONTENT;
   var WEDDING = new Date(2032, 9, 16, 0, 0, 0); // 16 Oct 2032, midnight local time
   var DAY_MS = 864e5;
-  var YES_KEY = "jj-said-yes";
-  var PREP_KEY = "jj-prep";
-  var LETTERS_KEY = "jj-letters";
-  var ME_KEY = "jj-me";
-  var PLAN_KEY = "jj-plan";
+  var ME_KEY = "jj-me"; // who is holding this phone; stays on the phone
+  var S = window.JJStore; // everything we save, and its sync (js/store.js)
   var NOTE_MAX = 800;
 
   var SONG = {
@@ -304,19 +301,12 @@
   /* ---------- "Yes" days ---------- */
 
   function yesState() {
-    var data = readStore(YES_KEY);
-    if (!data || typeof data.days !== "number") data = { days: 0, last: null };
-    return data;
+    var today = dateKey(new Date());
+    return { days: S.yesCount(), last: S.yesOn(today) ? today : null };
   }
 
   function recordYes() {
-    var data = yesState();
-    var today = dateKey(new Date());
-    if (data.last !== today) {
-      data.days += 1;
-      data.last = today;
-    }
-    return writeStore(YES_KEY, data) ? data.days : null;
+    return S.addYes(dateKey(new Date()));
   }
 
   function showTally(days) {
@@ -880,20 +870,14 @@
     var note = decodeNote(m[1]);
     // Tidy the address so a reload shows the normal page; the letter is kept below.
     try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ }
-    if (note) keepLetter(note, "received");
+    if (note) keepLetter(note);
     return note;
   }
 
-  function letters() {
-    var list = readStore(LETTERS_KEY);
-    return Array.isArray(list) ? list : [];
-  }
+  function letters() { return S.letters(); }
 
-  function keepLetter(note, kind) {
-    var list = letters();
-    if (list.some(function (l) { return l.id === note.id; })) return;
-    list.push({ id: note.id, kind: kind, from: note.from, to: note.to, msg: note.msg, date: note.date });
-    writeStore(LETTERS_KEY, list.slice(-60));
+  function keepLetter(note) {
+    return S.addLetter({ from: note.from, to: note.to, msg: note.msg, date: note.date });
   }
 
   function renderKept() {
@@ -901,18 +885,25 @@
     var list = letters().slice().reverse();
     root.textContent = "";
     $("#kept-empty").hidden = list.length > 0;
+    var me = readStore(ME_KEY);
     list.forEach(function (l) {
-      var item = el("article", "letter letter--" + l.kind);
+      var kind = l.from === me ? "sent" : l.to === me ? "received" : "kept";
+      var item = el("article", "letter letter--" + kind);
       item.appendChild(el("p", "letter__meta",
-        (l.kind === "sent" ? "Sent · " : "Received · ") + "From " + l.from + " to " + l.to + (l.date ? " · " + fmtKey(l.date) : "")));
+        (kind === "sent" ? "Sent · " : kind === "received" ? "Received · " : "") + "From " + l.from + " to " + l.to + (l.date ? " · " + fmtKey(l.date) : "")));
       item.appendChild(el("p", "letter__msg", l.msg));
       var remove = el("button", "letter__remove", "×");
       remove.type = "button";
       remove.setAttribute("aria-label", "Remove this letter from this phone");
       remove.addEventListener("click", function () {
-        if (!window.confirm("Remove this letter from this phone?")) return;
-        writeStore(LETTERS_KEY, letters().filter(function (x) { return x.id !== l.id; }));
-        renderKept();
+        confirmDelete({
+          title: "Remove this letter?",
+          text: "This letter from " + l.from + " will be removed" + (S.sync.configured() ? " from both phones." : " from this phone.")
+        }).then(function (r) {
+          if (!r.ok) return;
+          S.removeLetter(l.id);
+          renderKept();
+        });
       });
       item.appendChild(remove);
       root.appendChild(item);
@@ -951,7 +942,7 @@
       var date = dateKey(new Date());
       var code = toB64Url(JSON.stringify({ f: from, m: msg, d: date }));
       var url = location.origin + location.pathname + "#note=" + code;
-      keepLetter({ id: code, from: from, to: to, msg: msg, date: date }, "sent");
+      keepLetter({ from: from, to: to, msg: msg, date: date });
       renderKept();
 
       shareLink({
@@ -991,22 +982,20 @@
     return PLANS.filter(function (p) { return p.id === id; })[0] || PLANS[0];
   }
 
-  var plan = (function () {
-    var saved = readStore(PLAN_KEY) || {};
-    var done = {};
+  var plan = { track: null, done: {}, view: null, settling: false, timer: null };
+
+  function loadPlan() {
+    plan.track = planById(S.planTrack()).id;
     PLANS.forEach(function (p) {
-      var list = saved.done && Array.isArray(saved.done[p.id]) ? saved.done[p.id] : [];
-      done[p.id] = new Set(list.filter(function (i) { return i >= 0 && i < p.days.length; }));
+      var set = S.planDone(p.id);
+      plan.done[p.id] = new Set(Array.from(set).filter(function (i) { return i >= 0 && i < p.days.length; }));
     });
-    return { track: planById(saved.track).id, done: done, view: null, settling: false, timer: null };
-  })();
+  }
+  loadPlan();
 
   function savePlan() {
-    var out = {};
-    PLANS.forEach(function (p) {
-      out[p.id] = Array.from(plan.done[p.id]).sort(function (a, b) { return a - b; });
-    });
-    writeStore(PLAN_KEY, { track: plan.track, done: out });
+    S.setPlanTrack(plan.track);
+    PLANS.forEach(function (p) { S.setPlanDone(p.id, plan.done[p.id]); });
   }
 
   function firstUnread(p) {
@@ -1188,11 +1177,18 @@
       var p = planById(plan.track);
       var done = plan.done[p.id];
       if (this.getAttribute("data-mode") === "restart") {
-        if (!window.confirm("Begin " + p.title + " again from day 1?")) return;
-        done.clear();
-        plan.view = null;
-        savePlan();
-        renderPlan();
+        confirmDelete({
+          title: "Begin " + p.title + " again?",
+          text: "All the ticks for this plan will be cleared, and you start again from day 1.",
+          withBackup: "Download backup, then begin again",
+          yes: "Begin again without a backup"
+        }).then(function (r) {
+          if (!r.ok) return;
+          done.clear();
+          plan.view = null;
+          savePlan();
+          renderPlan();
+        });
         return;
       }
       var idx = plan.view !== null ? plan.view : firstUnread(p);
@@ -1412,10 +1408,12 @@
 
   /* ---------- Preparing together ---------- */
 
+  var refreshPrep = function () {};
+
   function renderPrep() {
     var root = $("#prep-list");
-    var done = readStore(PREP_KEY) || {};
     var ids = [];
+    var inputs = [];
 
     C.preparation.forEach(function (group, gi) {
       var card = el("article", "card prep-group");
@@ -1426,13 +1424,12 @@
         var label = el("label", "check");
         var input = document.createElement("input");
         input.type = "checkbox";
-        input.checked = !!done[id];
+        input.checked = S.prepOn(id);
         input.addEventListener("change", function () {
-          if (input.checked) done[id] = true;
-          else delete done[id];
-          writeStore(PREP_KEY, done);
+          S.setPrep(id, input.checked);
           update();
         });
+        inputs.push({ id: id, input: input });
         label.appendChild(input);
         label.appendChild(el("span", null, text));
         card.appendChild(label);
@@ -1441,13 +1438,17 @@
     });
 
     function update() {
-      var n = ids.filter(function (id) { return done[id]; }).length;
+      var n = ids.filter(function (id) { return S.prepOn(id); }).length;
       $("#prep-bar").style.width = (n / ids.length) * 100 + "%";
       $("#prep-count").textContent = n === ids.length
         ? "All " + ids.length + " done. Praise God! ♥"
         : n + " of " + ids.length + " prepared";
     }
     update();
+    refreshPrep = function () {
+      inputs.forEach(function (x) { x.input.checked = S.prepOn(x.id); });
+      update();
+    };
   }
 
   /* ---------- Top bar, menu and gentle reveal ---------- */
@@ -1542,7 +1543,201 @@
     $("#replay-btn").addEventListener("click", function () { proposal.replay(); });
   }
 
+  /* ---------- Sync & backup ---------- */
+
+  var sheetsOpen = 0;
+  function sheetLock(on) {
+    sheetsOpen = Math.max(0, sheetsOpen + (on ? 1 : -1));
+    document.documentElement.classList.toggle("has-sheet", sheetsOpen > 0);
+  }
+
+  // Ask before deleting anything, and offer a backup first. Resolves { ok, remote }.
+  function confirmDelete(opts) {
+    return new Promise(function (resolve) {
+      var sheet = $("#confirm-sheet");
+      var remote = $("#confirm-remote");
+      var back = document.activeElement;
+      $("#confirm-title").textContent = opts.title;
+      $("#confirm-text").textContent = opts.text;
+      $("#confirm-backup").textContent = opts.withBackup || "Download backup, then delete";
+      $("#confirm-yes").textContent = opts.yes || "Delete without a backup";
+      $("#confirm-remote-wrap").hidden = !opts.remote;
+      remote.checked = false;
+      sheet.hidden = false;
+      sheetLock(true);
+      $("#confirm-backup").focus();
+
+      function finish(ok, backup) {
+        sheet.hidden = true;
+        sheetLock(false);
+        sheet.removeEventListener("click", onClick);
+        sheet.removeEventListener("keydown", onKey);
+        if (ok && backup) S.downloadBackup();
+        if (back && back.focus) back.focus({ preventScroll: true });
+        resolve({ ok: ok, remote: ok && remote.checked });
+      }
+      function onClick(e) {
+        if (e.target === sheet || e.target.id === "confirm-no") finish(false);
+        else if (e.target.id === "confirm-backup") finish(true, true);
+        else if (e.target.id === "confirm-yes") finish(true, false);
+      }
+      function onKey(e) { if (e.key === "Escape") finish(false); }
+      sheet.addEventListener("click", onClick);
+      sheet.addEventListener("keydown", onKey);
+    });
+  }
+
+  function ago(iso) {
+    var mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return plural(mins, "minute") + " ago";
+    var hours = Math.round(mins / 60);
+    if (hours < 24) return plural(hours, "hour") + " ago";
+    return "on " + fmtKey(dateKey(new Date(iso)));
+  }
+
+  function initSync() {
+    var btn = $("#sync-btn");
+    var sheet = $("#sync-sheet");
+    var status = $("#sync-status");
+    var connectBtn = $("#sync-connect");
+    var note = null; // a short message that stays for a few seconds
+
+    function say(text, isError) {
+      note = { text: text, error: !!isError, until: Date.now() + 6000 };
+      render();
+    }
+
+    function render() {
+      var st = S.sync.status();
+      var on = S.sync.configured();
+      btn.setAttribute("data-status", st);
+      btn.setAttribute("aria-label", "Sync and backup" + (st === "syncing" ? ", syncing" : st === "error" ? ", needs attention" : on ? ", synced" : ""));
+      $("#sync-setup").hidden = on;
+      $("#sync-connected").hidden = !on;
+      $("#sync-auto").checked = S.sync.auto();
+      status.classList.toggle("is-error", st === "error" || (st === "off" && !!S.sync.message()));
+      if (note && note.until > Date.now() && st !== "syncing" && st !== "error") {
+        status.classList.toggle("is-error", note.error);
+        status.textContent = note.text;
+      } else status.textContent = st === "syncing" ? "Syncing…"
+        : st === "error" || (st === "off" && S.sync.message()) ? S.sync.message()
+        : on ? (S.sync.last() ? "Both phones are in step ♥" : "Ready to sync")
+        : "Saved on this phone only, for now.";
+      $("#sync-last").textContent = S.sync.last()
+        ? "Last synced " + ago(S.sync.last()) + (S.sync.auto() ? ". It syncs by itself whenever something changes." : ".")
+        : "Not synced yet.";
+
+      var sum = S.summary();
+      var list = $("#sync-summary");
+      list.textContent = "";
+      [
+        "Said yes on " + plural(sum.yes, "day"),
+        fmtNum(sum.plan) + " Bible " + (sum.plan === 1 ? "reading" : "readings") + " read together",
+        plural(sum.letters, "love letter"),
+        sum.prep + " of 19 preparations done"
+      ].forEach(function (t) { list.appendChild(el("li", null, t)); });
+    }
+
+    function open() {
+      if (!sheet.hidden) return;
+      render();
+      sheet.hidden = false;
+      sheetLock(true);
+      $("#sync-close").focus();
+    }
+    function close() {
+      if (sheet.hidden) return;
+      sheet.hidden = true;
+      sheetLock(false);
+      btn.focus({ preventScroll: true });
+    }
+
+    S.sync.onStatus(render);
+    S.onChange(function () { if (!sheet.hidden) render(); });
+    btn.addEventListener("click", open);
+    $("#sync-close").addEventListener("click", close);
+    sheet.addEventListener("click", function (e) { if (e.target === sheet) close(); });
+    sheet.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("#confirm-sheet").hidden) close(); });
+    document.querySelectorAll("[data-open-sync]").forEach(function (a) {
+      a.addEventListener("click", function (e) { e.preventDefault(); setTimeout(open, 50); });
+    });
+
+    connectBtn.addEventListener("click", function () {
+      var token = $("#sync-token").value.trim();
+      var secret = $("#sync-secret").value;
+      if (!/^(github_pat_|ghp_)/.test(token)) { say("Paste our GitHub key. It starts with github_pat_.", true); return; }
+      if (secret.length < 6) { say("Choose a secret word of at least 6 letters, the same on both phones.", true); return; }
+      connectBtn.disabled = true;
+      S.sync.connect(token, secret).then(function (ok) {
+        connectBtn.disabled = false;
+        if (ok) { $("#sync-token").value = ""; $("#sync-secret").value = ""; }
+        render();
+      });
+    });
+    $("#sync-now").addEventListener("click", function () { S.sync.now(); });
+    $("#sync-auto").addEventListener("change", function () { S.sync.setAuto(this.checked); render(); });
+    $("#sync-disconnect").addEventListener("click", function () {
+      if (!window.confirm("Stop syncing on this phone? Everything stays saved here.")) return;
+      S.sync.disconnect();
+      render();
+    });
+
+    $("#backup-download").addEventListener("click", function () {
+      S.downloadBackup();
+      say("Backup downloaded ♥ Keep it somewhere safe.");
+    });
+    $("#backup-file").addEventListener("change", function () {
+      var file = this.files && this.files[0];
+      var input = this;
+      if (!file) return;
+      file.text().then(function (text) {
+        S.restoreBackup(text);
+        say("Backup restored ♥");
+      }).catch(function (err) {
+        say(err && err.message ? err.message : "That file couldn’t be read.", true);
+      }).then(function () { input.value = ""; });
+    });
+
+    $("#site-update").addEventListener("click", function () {
+      say("Loading the latest version…");
+      var go = function () { location.reload(); };
+      if (S.sync.configured()) S.sync.now().then(go, go);
+      else go();
+    });
+
+    $("#data-delete").addEventListener("click", function () {
+      var synced = S.sync.configured();
+      confirmDelete({
+        title: "Delete everything on this phone?",
+        text: "Your yes days, Bible plan, checklist and love letters will be removed from this phone." +
+          (synced ? " Syncing will also be turned off here." : ""),
+        remote: synced
+      }).then(function (r) {
+        if (!r.ok) return;
+        var removeRemote = r.remote ? S.sync.deleteRemote() : Promise.resolve();
+        return removeRemote.catch(function () { /* still delete on this phone */ }).then(function () {
+          S.sync.disconnect();
+          S.wipe();
+          // Give the backup download a moment to start before reloading.
+          setTimeout(function () { location.reload(); }, 1200);
+        });
+      });
+    });
+
+    render();
+  }
+
   /* ---------- Start ---------- */
+
+  S.onChange(function (external) {
+    if (!external) return;
+    loadPlan();
+    renderPlan();
+    refreshPrep();
+    renderKept();
+    showTally(yesState().days);
+  });
 
   renderPillars();
   renderRoles();
@@ -1568,4 +1763,5 @@
     $("#plan").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
   });
   initFooter();
+  initSync();
 })();
