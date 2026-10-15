@@ -6,7 +6,7 @@ A small website for the two of us to open every day:
 
 - A **sealed envelope** each time the site opens: tap the wax seal, the letter rises, and it asks **"Will you marry me?"**
 - **Our song** ([YouTube](https://www.youtube.com/watch?v=SuPCTBmISzQ&t=47s)) starts by itself, muted, as the page loads, and the sound comes on with the first tap (the seal). It loops from 0:47. Use the gold ♪ button to pause or resume.
-- A **music visualiser** in wedding style: a rose window of gold petals around the rings that blooms with the music, rings of gold dust on each beat, and drifting candle-light.
+- A gentle **music visualiser**: drifting candle-light that brightens with the music, sparkles and a soft glow on the countdown with each beat.
 - A **countdown** to 16 October 2032.
 - A **verse of the day** and **promise of the day**, the same for both of us and changing at midnight.
 - **The three pillars of marriage:** lifelong fellowship to grow closer to Christ, intimacy within marriage, and offspring.
@@ -33,9 +33,9 @@ Free GitHub Pages needs the repository to be **public**, so anyone with the link
 
 ### About the music visualiser
 
-Browsers don't let a website listen to a YouTube video's sound, so with YouTube the visualiser pulses on the song's beat, kept in step with where the song is playing. Set the tempo with `bpm` (and `beatOffset`) in `SONG` at the top of `js/main.js`.
+Browsers don't let a website listen to a YouTube video's sound, so with YouTube the visualiser pulses on the song's beat, kept in step with where the song is playing. The tempo is set to 63 BPM (the tempo of "Goodness of God"); adjust it with `bpm` (and `beatOffset`) in `SONG` at the top of `js/main.js`.
 
-To make it react to the real audio instead, put your own copy of the song at `audio/song.mp3`. The site then plays that file (from 0:47, looping) and the petals respond to the actual sound.
+To make it react to the real audio instead, put your own copy of the song at `audio/song.mp3`. The site then plays that file (from 0:47, looping) and the lights respond to the actual sound.
 
 ### About the music
 

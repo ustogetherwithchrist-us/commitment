@@ -14,7 +14,7 @@
     file: "audio/song.mp3",
     // Used with YouTube, where browsers do not let a page hear the audio:
     // the visualiser pulses on this beat, locked to the song's playback time.
-    bpm: 72,
+    bpm: 63, // "Goodness of God" is 63 BPM in 4/4
     beatOffset: 0 // seconds; nudge so the pulses land on the downbeat
   };
 
@@ -471,7 +471,7 @@
     updateMusicUI();
   }
 
-  /* ---------- Visualiser: a rose window of gold petals and drifting candle-light ---------- */
+  /* ---------- Visualiser: drifting candle-light and a glow on the beat ---------- */
 
   var BANDS = 24;
   var viz = {
@@ -483,7 +483,6 @@
     avgBass: 0.2,
     lastBeatAt: 0,
     lastBeatIdx: null,
-    ripples: [],
     sparkles: []
   };
 
@@ -536,8 +535,6 @@
 
   function onBeat(strength) {
     viz.pulse = Math.max(viz.pulse, strength);
-    viz.ripples.push({ born: performance.now(), strength: strength });
-    if (viz.ripples.length > 6) viz.ripples.shift();
     if (strength > 0.8) spawnSparkles(2);
   }
 
@@ -560,12 +557,6 @@
     viz.pulse *= 0.93;
   }
 
-  // Mirror the bands around the circle so the rosette blooms symmetrically.
-  function bandAt(i, n) {
-    var x = Math.abs(((i / n) * 6) % 2 - 1); // 0..1..0 six times around
-    return viz.levels[Math.round((1 - x) * (BANDS - 1))];
-  }
-
   function fitCanvas(canvas) {
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     var w = canvas.clientWidth;
@@ -577,105 +568,6 @@
     var ctx = canvas.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     return { ctx: ctx, w: w, h: h };
-  }
-
-  function petal(ctx, base, len, width) {
-    ctx.beginPath();
-    ctx.moveTo(base, 0);
-    ctx.bezierCurveTo(base + len * 0.3, -width, base + len * 0.8, -width * 0.7, base + len, 0);
-    ctx.bezierCurveTo(base + len * 0.8, width * 0.7, base + len * 0.3, width, base, 0);
-    ctx.closePath();
-  }
-
-  function drawRosette(canvas, now) {
-    var c = fitCanvas(canvas);
-    var ctx = c.ctx;
-    var cx = c.w / 2;
-    var cy = c.h / 2;
-    var R = Math.min(c.w, c.h) / 2;
-    ctx.clearRect(0, 0, c.w, c.h);
-
-    // Soft halo of candle-light
-    var halo = ctx.createRadialGradient(cx, cy, R * 0.25, cx, cy, R);
-    halo.addColorStop(0, "rgba(246, 227, 166, " + (0.22 + 0.4 * viz.pulse).toFixed(3) + ")");
-    halo.addColorStop(1, "rgba(246, 227, 166, 0)");
-    ctx.fillStyle = halo;
-    ctx.beginPath();
-    ctx.arc(cx, cy, R, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Rings of gold dust that spread outward on each beat
-    ctx.setLineDash([1.5, 5]);
-    for (var r = viz.ripples.length - 1; r >= 0; r--) {
-      var rp = viz.ripples[r];
-      var p = (now - rp.born) / 1800;
-      if (p >= 1) { viz.ripples.splice(r, 1); continue; }
-      ctx.strokeStyle = "rgba(184, 137, 59, " + ((1 - p) * 0.7 * rp.strength).toFixed(3) + ")";
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.arc(cx, cy, R * (0.5 + 0.48 * p), 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.setLineDash([]);
-
-    ctx.save();
-    ctx.translate(cx, cy);
-
-    // Outer petals
-    var N = 36;
-    var rot = now * 0.00005;
-    for (var i = 0; i < N; i++) {
-      var lvl = 0.55 * viz.bass + 0.45 * bandAt(i, N);
-      ctx.save();
-      ctx.rotate(rot + (i * Math.PI * 2) / N);
-      petal(ctx, R * 0.4, R * (0.14 + 0.42 * lvl), R * (0.045 + 0.03 * lvl));
-      ctx.fillStyle = "rgba(214, 176, 92, " + (0.22 + 0.55 * lvl).toFixed(3) + ")";
-      ctx.fill();
-      ctx.lineWidth = 0.8;
-      ctx.strokeStyle = "rgba(138, 102, 40, " + (0.35 + 0.4 * lvl).toFixed(3) + ")";
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // Inner petals, turning the other way
-    var M = 16;
-    for (var j = 0; j < M; j++) {
-      ctx.save();
-      ctx.rotate(-rot * 1.6 + (j * Math.PI * 2) / M + Math.PI / M);
-      petal(ctx, R * 0.31, R * (0.1 + 0.16 * viz.bass), R * 0.05);
-      ctx.fillStyle = "rgba(240, 216, 150, " + (0.35 + 0.5 * viz.bass).toFixed(3) + ")";
-      ctx.fill();
-      ctx.lineWidth = 0.7;
-      ctx.strokeStyle = "rgba(165, 122, 46, 0.55)";
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // Pearls around the edge, twinkling with the high notes
-    var D = 64;
-    for (var k = 0; k < D; k++) {
-      var tw = bandAt(k + 8, D);
-      var a = (k * Math.PI * 2) / D + rot * 0.5;
-      ctx.beginPath();
-      ctx.arc(Math.cos(a) * R * 0.95, Math.sin(a) * R * 0.95, 0.8 + 1.8 * tw, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(184, 137, 59, " + (0.25 + 0.7 * tw).toFixed(3) + ")";
-      ctx.fill();
-    }
-
-    // Ivory centre for the rings
-    ctx.beginPath();
-    ctx.arc(0, 0, R * 0.3, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255, 253, 248, 0.96)";
-    ctx.fill();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(184, 137, 59, 0.6)";
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(0, 0, R * 0.27, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(184, 137, 59, 0.3)";
-    ctx.stroke();
-
-    ctx.restore();
   }
 
   // Drifting lights like candles seen through a veil
@@ -761,17 +653,11 @@
   }
 
   function initVisualiser() {
-    var rosette = $("#rosette");
     var ambient = $("#ambient");
     var clock = $("#countdown-clock");
     var bars = musicBtn.querySelectorAll(".music__bars i");
 
-    if (reduceMotion) {
-      idleLevels(0);
-      viz.levels.set(viz.target);
-      drawRosette(rosette, 0);
-      return;
-    }
+    if (reduceMotion) return;
 
     orbSprite = makeOrbSprite();
     window.addEventListener("resize", function () { orbs = []; });
@@ -779,7 +665,6 @@
     var lastPulse = -1;
     function frame(now) {
       updateLevels(now);
-      drawRosette(rosette, now);
       drawAmbient(ambient, now);
 
       var pulse = Math.round(viz.pulse * 50) / 50;
