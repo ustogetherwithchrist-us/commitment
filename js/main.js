@@ -1288,12 +1288,12 @@
         title.appendChild(el("span", "royal", pending.to));
         $("#envelope-letter-text").textContent = "For you, " + pending.to + " ♥";
       } else {
+        // The daily proposal is always from Joel to Jemimah.
         $("#envelope-kicker").textContent = "The Holy Matrimony Celebration";
-        title.append("A letter for ");
-        var names = el("span", "royal", "Jemimah ");
-        names.appendChild(el("span", "amp", "&"));
-        names.append(" Joel");
-        title.appendChild(names);
+        title.append("A letter from ");
+        title.appendChild(el("span", "royal", "Joel"));
+        title.append(" to ");
+        title.appendChild(el("span", "royal", "Jemimah"));
         $("#envelope-letter-text").textContent = "Will you marry me?";
       }
     }

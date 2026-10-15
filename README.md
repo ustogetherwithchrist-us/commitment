@@ -6,7 +6,7 @@ A website for the two of us to open every day: to be loved, to stay in love, to 
 
 ## What's inside
 
-- **A sealed envelope every time it opens.** Tap the wine-red wax seal, the letter rises, and it asks "Will you marry me?" Each "yes" is counted.
+- **A sealed envelope every time it opens.** A letter from Joel to Jemimah: tap the wine-red wax seal, the letter rises, and it asks "Will you marry me?" Each "yes" is counted.
 - **Our song.** "Goodness of God" (Bethel Music, instrumental cover by Sudirman Worship) is stored in this repository as `audio/song.mp3`. It starts playing muted as the page loads, and the sound comes on with the first tap (the seal). It loops from 0:12. The gold "now playing" button pauses and resumes it.
 - **Until We Say "I Do".** A live countdown to 16 October 2032, with the months, weeks and Sundays of worship left.
 - **Our Daily Altar.** Each day brings a verse, a promise, a question to talk about, a prayer prompt, and the day's chapter of Proverbs. Both phones show the same ones, and they change at midnight.

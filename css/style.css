@@ -79,6 +79,8 @@ a { color: var(--gold-deep); }
 
 .amp { font-family: var(--script); color: var(--gold); }
 
+.nowrap { white-space: nowrap; }
+
 .rings { display: block; width: 64px; height: 56px; margin: 0 auto; }
 .rings--lg { width: 84px; height: 72px; }
 
