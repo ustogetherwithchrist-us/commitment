@@ -549,5 +549,73 @@ window.CONTENT = {
         "Set aside a quiet day of prayer before the wedding"
       ]
     }
+  ],
+
+  // Bible plans to read together. "days" are hand-picked; "books" become one chapter a day.
+  plans: [
+    {
+      id: "love",
+      title: "Love & Marriage",
+      about: "Thirty readings on love, covenant and marriage, each with a question to talk about together.",
+      days: [
+        { ref: "Genesis 1:26–31", title: "Made in His image", ask: "What do you see of God’s image in each other?" },
+        { ref: "Genesis 2:18–25", title: "The two become one", ask: "What does leaving and being joined mean for us and our families?" },
+        { ref: "Genesis 24", title: "A bride for Isaac", ask: "Where have we seen God’s guidance in our story so far?" },
+        { ref: "Ruth 1", title: "Where you go, I will go", ask: "What does loyal, covenant love look like in a hard season?" },
+        { ref: "Ruth 2", title: "Kindness in the field", ask: "How can we show kindness to each other’s families?" },
+        { ref: "Ruth 3", title: "Waiting with trust", ask: "What helps us wait patiently for God’s timing?" },
+        { ref: "Ruth 4", title: "The redeemer", ask: "How does Boaz point us to Christ, our Redeemer?" },
+        { ref: "Psalm 127", title: "Unless the LORD builds the house", ask: "What would it look like for God to build our home?" },
+        { ref: "Psalm 128", title: "A blessed home", ask: "Which blessings do we want to pray over our future family?" },
+        { ref: "Proverbs 3", title: "Trust in the LORD", ask: "Which decision ahead of us do we need to trust God with?" },
+        { ref: "Proverbs 31", title: "A woman of strength", ask: "Which of these qualities do we want to honor in our home?" },
+        { ref: "Ecclesiastes 4:9–12", title: "A threefold cord", ask: "How can we keep Christ the third strand of our cord every day?" },
+        { ref: "Song of Solomon 2", title: "My beloved is mine", ask: "How can we delight in each other in a way that honors God?" },
+        { ref: "Song of Solomon 8:6–7", title: "Love as strong as death", ask: "What makes love strong enough to last a lifetime?" },
+        { ref: "Malachi 2:13–16", title: "Faithful to the covenant", ask: "Why does God care so much about faithfulness in marriage?" },
+        { ref: "Matthew 19:1–12", title: "What God has joined together", ask: "What does “let not man separate” ask of us?" },
+        { ref: "Mark 10:35–45", title: "Greatness through serving", ask: "Where can we serve each other better this week?" },
+        { ref: "John 2:1–11", title: "Jesus at a wedding", ask: "What does it mean to invite Jesus into our wedding and our marriage?" },
+        { ref: "John 13:1–17", title: "Washing each other’s feet", ask: "What is one humble way we can serve each other today?" },
+        { ref: "John 15:1–17", title: "Abide in My love", ask: "How do we stay close to Christ as a couple?" },
+        { ref: "Romans 12:9–21", title: "Love without hypocrisy", ask: "Which of these instructions do we most need right now?" },
+        { ref: "1 Corinthians 7:1–7", title: "Belonging to each other", ask: "How will we protect purity now and intimacy in marriage?" },
+        { ref: "1 Corinthians 13", title: "The way of love", ask: "Read it again with your own name in place of “love”. Where do you want to grow?" },
+        { ref: "Galatians 5:13–26", title: "The fruit of the Spirit", ask: "Which fruit of the Spirit do you see growing in each other?" },
+        { ref: "Ephesians 4:25–32", title: "Speak truth, forgive, be kind", ask: "How do we want to handle anger and forgiveness?" },
+        { ref: "Ephesians 5:21–33", title: "Christ and the church", ask: "What does it look like for us to love and respect each other well?" },
+        { ref: "Philippians 2:1–11", title: "The mind of Christ", ask: "How can we put each other’s interests first?" },
+        { ref: "Colossians 3:12–19", title: "Clothed in love", ask: "What will we “put on” each day as a couple?" },
+        { ref: "1 Peter 3:1–9", title: "Heirs together of grace", ask: "How can we pray together so that our prayers are not hindered?" },
+        { ref: "1 John 4:7–21", title: "God is love", ask: "How has God’s love for us changed the way we love each other?" }
+      ]
+    },
+    {
+      id: "gospels",
+      title: "The Gospels",
+      about: "Walk with Jesus from Matthew to John, one chapter a day.",
+      books: [["Matthew", 28], ["Mark", 16], ["Luke", 24], ["John", 21]]
+    },
+    {
+      id: "bible",
+      title: "The Whole Bible",
+      about: "Genesis to Revelation, one chapter a day, finished together before our wedding day.",
+      books: [
+        ["Genesis", 50], ["Exodus", 40], ["Leviticus", 27], ["Numbers", 36], ["Deuteronomy", 34],
+        ["Joshua", 24], ["Judges", 21], ["Ruth", 4], ["1 Samuel", 31], ["2 Samuel", 24],
+        ["1 Kings", 22], ["2 Kings", 25], ["1 Chronicles", 29], ["2 Chronicles", 36], ["Ezra", 10],
+        ["Nehemiah", 13], ["Esther", 10], ["Job", 42], ["Psalms", 150], ["Proverbs", 31],
+        ["Ecclesiastes", 12], ["Song of Solomon", 8], ["Isaiah", 66], ["Jeremiah", 52], ["Lamentations", 5],
+        ["Ezekiel", 48], ["Daniel", 12], ["Hosea", 14], ["Joel", 3], ["Amos", 9],
+        ["Obadiah", 1], ["Jonah", 4], ["Micah", 7], ["Nahum", 3], ["Habakkuk", 3],
+        ["Zephaniah", 3], ["Haggai", 2], ["Zechariah", 14], ["Malachi", 4],
+        ["Matthew", 28], ["Mark", 16], ["Luke", 24], ["John", 21], ["Acts", 28],
+        ["Romans", 16], ["1 Corinthians", 16], ["2 Corinthians", 13], ["Galatians", 6], ["Ephesians", 6],
+        ["Philippians", 4], ["Colossians", 4], ["1 Thessalonians", 5], ["2 Thessalonians", 3], ["1 Timothy", 6],
+        ["2 Timothy", 4], ["Titus", 3], ["Philemon", 1], ["Hebrews", 13], ["James", 5],
+        ["1 Peter", 5], ["2 Peter", 3], ["1 John", 5], ["2 John", 1], ["3 John", 1],
+        ["Jude", 1], ["Revelation", 22]
+      ]
+    }
   ]
 };

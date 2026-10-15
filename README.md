@@ -10,6 +10,12 @@ A website for the two of us to open every day: to be loved, to stay in love, to 
 - **Our song.** "Goodness of God" (Bethel Music, instrumental cover) starts playing muted as the page loads. The sound comes on with the first tap (the seal), and the song loops from 0:47. The gold "now playing" button pauses and resumes it.
 - **Until We Say "I Do".** A live countdown to 16 October 2032, the months, weeks and Sundays of worship left, the next milestone (such as 2,000 days to go) and an "Add to calendar" button.
 - **Our Daily Altar.** Each day brings a verse, a promise, a question to talk about, a prayer prompt, and the day's chapter of Proverbs. Both phones show the same ones, and they change at midnight. A "We prayed together today" button keeps count.
+- **Our Bible Plan.** Read the Word together with one of three plans:
+  - *Love & Marriage*: 30 hand-picked readings, each with a question to talk about together
+  - *The Gospels*: 89 days, a chapter a day
+  - *The Whole Bible*: 1,189 days, a chapter a day, finishing well before the wedding
+
+  Tick off each reading together and the next one is ready. "See every reading" opens any day or chapter. "Send our progress" makes a link that brings the other phone up to date. The Daily Altar's "Read together" card always shows the next reading.
 - **Love Letters.** Write a note, seal it and send the link (WhatsApp, SMS, anything). It opens inside the wax-sealed envelope on the other phone. The letter travels inside the link itself, so it is never stored on a server. Sent and received letters are kept on each phone.
 - **Holy Matrimony**, with the paper-cut bride and groom, and **The Three Pillars of Marriage**: lifelong fellowship to grow closer to Christ, intimacy within marriage, and offspring.
 - **Our Roles in Christ**, **Our Promises**, and **The Vows We Will Speak**, adapted from the traditional Book of Common Prayer vows.
@@ -31,7 +37,7 @@ Free GitHub Pages needs the repository to be **public**, so anyone with the link
 
 ## Changing things
 
-- **Verses, promises, pillars, roles, daily questions, prayer prompts, checklist:** edit `js/content.js`.
+- **Verses, promises, pillars, roles, daily questions, prayer prompts, checklist, Bible plans:** edit `js/content.js`.
 - **Wedding date and song:** `WEDDING` and the `SONG` settings at the top of `js/main.js`.
 - **Colors and fonts:** the variables at the top of `css/style.css`.
 
@@ -45,4 +51,4 @@ Browsers also don't let a website listen to a YouTube video's sound. With YouTub
 
 ### What is saved where
 
-The yes count, prayer count, checklist ticks and kept letters are saved in each phone's browser. They are not shared between your two phones, and clearing the browser's data removes them.
+The yes count, prayer count, checklist ticks, Bible plan progress and kept letters are saved in each phone's browser. They are not shared between your two phones automatically; use "Send our progress" for the Bible plan. Clearing the browser's data removes them.

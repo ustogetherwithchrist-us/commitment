@@ -16,7 +16,7 @@
   --gold-foil: linear-gradient(110deg, #9A7029 0%, #C9A04E 22%, #F6E3A6 40%, #C9A04E 55%, #A57A2E 75%, #E9CF8A 88%, #8A6628 100%);
   --shadow: 0 14px 40px rgba(120, 88, 36, 0.12);
   --script: "Great Vibes", "Snell Roundhand", cursive;
-  --serif: "Cormorant Garamond", "Noto Serif Telugu", Georgia, "Times New Roman", serif;
+  --serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
   --caps: "Cinzel", "Trajan Pro", Georgia, serif;
   color-scheme: light;
 }
@@ -396,7 +396,7 @@ a { color: var(--gold-deep); }
 /* ---------- Sections ---------- */
 .section, .hero { scroll-margin-top: 64px; }
 .section { padding: clamp(64px, 10vw, 104px) 0; text-align: center; }
-.section--cream { background: rgba(244, 236, 220, 0.6); border-block: 1px solid var(--line-soft); }
+main > .section:nth-of-type(odd) { background: rgba(244, 236, 220, 0.6); border-block: 1px solid var(--line-soft); }
 
 .container { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 16px; }
 
@@ -804,6 +804,119 @@ a { color: var(--gold-deep); }
 .milestone { max-width: 44ch; margin: 22px auto 0; font-style: italic; font-size: 1.12rem; text-wrap: balance; }
 .milestone strong { font-style: normal; font-weight: 600; color: var(--royal); }
 .calendar-btn { margin-top: 16px; text-decoration: none; }
+
+/* ---------- Bible plan ---------- */
+.plan-tracks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 36px; }
+.plan-track {
+  display: grid;
+  gap: 2px;
+  min-width: 150px;
+  padding: 10px 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--gold-deep);
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.plan-track:hover { background: rgba(230, 199, 122, 0.16); }
+.plan-track__title { font-family: var(--caps); font-size: 0.76rem; letter-spacing: 0.12em; text-transform: uppercase; }
+.plan-track__len { font-style: italic; font-size: 0.95rem; color: var(--ink-soft); }
+.plan-track[aria-pressed="true"] { background: var(--gold-gradient); border-color: transparent; color: #FFFDF6; }
+.plan-track[aria-pressed="true"] .plan-track__len { color: rgba(255, 253, 246, 0.92); }
+.plan-about { max-width: 52ch; margin: 18px auto 0; font-style: italic; color: var(--ink-soft); text-wrap: balance; }
+
+.plan-today { margin: 28px auto 0; }
+.plan-today__title { margin-top: 10px; font-weight: 600; font-size: clamp(1.7rem, 6vw, 2.3rem); line-height: 1.15; color: var(--royal); text-wrap: balance; }
+.plan-today__ref { margin-top: 6px; font-family: var(--caps); font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold-deep); }
+.plan-today__ask { max-width: 34ch; margin: 16px auto 0; font-style: italic; font-size: 1.2rem; line-height: 1.5; text-wrap: balance; }
+.plan-today .btn { text-decoration: none; }
+.plan-today__back { margin-top: 18px; background: none; border-width: 0 0 1px; cursor: pointer; }
+
+.plan-all { max-width: 760px; margin: 26px auto 0; text-align: left; }
+.plan-all > summary {
+  width: max-content;
+  margin: 0 auto;
+  padding: 10px 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  list-style: none;
+  font-family: var(--caps);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  cursor: pointer;
+}
+.plan-all > summary::-webkit-details-marker { display: none; }
+.plan-all[open] > summary { margin-bottom: 20px; }
+.plan-days { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.plan-day {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: center;
+  column-gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.plan-day__num {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  font-family: var(--caps);
+  font-size: 0.72rem;
+  color: var(--gold-deep);
+}
+.plan-day__title { font-weight: 600; line-height: 1.3; }
+.plan-day__ref { font-family: var(--caps); font-size: 0.64rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-deep); }
+.plan-day.is-done .plan-day__num { background: var(--gold-gradient); border-color: transparent; color: #FFFDF6; }
+.plan-day.is-current { border-color: var(--royal); }
+.plan-book { border-bottom: 1px dashed var(--line-soft); }
+.plan-book:last-child { border-bottom: 0; }
+.plan-book__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 4px;
+  list-style: none;
+  cursor: pointer;
+}
+.plan-book__head::-webkit-details-marker { display: none; }
+.plan-book__head::after { content: "+"; order: 3; color: var(--gold); }
+.plan-book[open] > .plan-book__head::after { content: "–"; }
+.plan-book__name { flex: 1; font-weight: 600; }
+.plan-book__count { font-family: var(--caps); font-size: 0.64rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-deep); }
+.plan-book.is-done .plan-book__name { color: var(--gold-deep); }
+.plan-book__chapters { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 4px 14px; }
+.plan-pill {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  font-family: var(--caps);
+  font-size: 0.7rem;
+  color: var(--gold-deep);
+  cursor: pointer;
+}
+.plan-pill.is-done { background: var(--gold-gradient); border-color: transparent; color: #FFFDF6; }
+.plan-pill.is-current { border-color: var(--royal); box-shadow: 0 0 0 1px var(--royal); }
+.plan-share { margin-top: 26px; }
+.altar__proverb { color: var(--royal); text-decoration: none; border-bottom: 1px solid var(--line); }
 
 /* ---------- Love letters ---------- */
 .letters { display: grid; gap: 22px; margin-top: 40px; text-align: left; }

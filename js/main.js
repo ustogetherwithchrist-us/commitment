@@ -9,6 +9,7 @@
   var PREP_KEY = "jj-prep";
   var LETTERS_KEY = "jj-letters";
   var ME_KEY = "jj-me";
+  var PLAN_KEY = "jj-plan";
   var NOTE_MAX = 800;
 
   var SONG = {
@@ -226,7 +227,7 @@
     $("#promise-of-day-ref").textContent = promise.ref || "";
     $("#question-of-day").textContent = question;
     $("#prayer-of-day").textContent = prayer;
-    $("#proverb-ref").textContent = proverb;
+    $("#proverb-link").textContent = proverb;
     $("#proverb-link").href = bibleLink(proverb);
 
     initPrayed();
@@ -849,20 +850,43 @@
    * Opening the link shows it inside the sealed envelope on the other phone.
    */
 
-  function toB64Url(str) {
-    var bytes = new TextEncoder().encode(str);
+  function bytesToB64Url(bytes) {
     var bin = "";
     for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
     return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
 
-  function fromB64Url(code) {
+  function b64UrlToBytes(code) {
     var b64 = code.replace(/-/g, "+").replace(/_/g, "/");
     while (b64.length % 4) b64 += "=";
     var bin = atob(b64);
     var bytes = new Uint8Array(bin.length);
     for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new TextDecoder().decode(bytes);
+    return bytes;
+  }
+
+  function toB64Url(str) { return bytesToB64Url(new TextEncoder().encode(str)); }
+  function fromB64Url(code) { return new TextDecoder().decode(b64UrlToBytes(code)); }
+
+  // Share a link through the phone's share sheet, or copy it where sharing isn't available.
+  function shareLink(opts) {
+    function copy() {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(opts.url).then(
+          function () { opts.done(opts.copied); },
+          function () { opts.status.textContent = opts.url; });
+      } else {
+        opts.status.textContent = opts.url;
+      }
+    }
+    if (navigator.share) {
+      navigator.share({ title: opts.title, text: opts.text, url: opts.url })
+        .then(function () { opts.done(opts.shared); }, function (err) {
+          if (!err || err.name !== "AbortError") copy();
+        });
+    } else {
+      copy();
+    }
   }
 
   function otherOf(name) { return name === "Joel" ? "Jemimah" : "Joel"; }
@@ -963,40 +987,315 @@
       keepLetter({ id: code, from: from, to: to, msg: msg, date: date }, "sent");
       renderKept();
 
-      function sent(note) {
-        status.textContent = note;
-        text.value = "";
-        count.textContent = "0 / " + NOTE_MAX;
-      }
-
-      function copy() {
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(url).then(
-            function () { sent("Sealed! The link is copied. Paste it to " + to + " ♥"); },
-            function () { status.textContent = url; });
-        } else {
-          status.textContent = url;
+      shareLink({
+        url: url,
+        title: "A sealed letter for " + to,
+        text: "I sealed a letter for you, " + to + " 💌",
+        status: status,
+        shared: "Sealed and sent to " + to + " ♥",
+        copied: "Sealed! The link is copied. Paste it to " + to + " ♥",
+        done: function (note) {
+          status.textContent = note;
+          text.value = "";
+          count.textContent = "0 / " + NOTE_MAX;
         }
-      }
-
-      if (navigator.share) {
-        navigator.share({ title: "A sealed letter for " + to, text: "I sealed a letter for you, " + to + " 💌", url: url })
-          .then(function () { sent("Sealed and sent to " + to + " ♥"); }, function (err) {
-            if (!err || err.name !== "AbortError") copy();
-          });
-      } else {
-        copy();
-      }
+      });
     });
 
     renderKept();
+  }
+
+  /* ---------- Bible plan together ----------
+   * Self-paced: the next reading is the first one not yet ticked.
+   * Progress is kept on each phone and can be sent to the other phone as a link.
+   */
+
+  var PLANS = C.plans.map(function (p) {
+    var days = p.days ? p.days.slice() : [];
+    (p.books || []).forEach(function (b) {
+      // A single psalm is "Psalm 23", the book is "Psalms"
+      var name = b[0] === "Psalms" ? "Psalm" : b[0];
+      for (var ch = 1; ch <= b[1]; ch++) days.push({ ref: name + " " + ch, book: b[0] });
+    });
+    return { id: p.id, title: p.title, about: p.about, days: days, byBook: !!p.books };
+  });
+
+  function planById(id) {
+    return PLANS.filter(function (p) { return p.id === id; })[0] || PLANS[0];
+  }
+
+  var plan = (function () {
+    var saved = readStore(PLAN_KEY) || {};
+    var done = {};
+    PLANS.forEach(function (p) {
+      var list = saved.done && Array.isArray(saved.done[p.id]) ? saved.done[p.id] : [];
+      done[p.id] = new Set(list.filter(function (i) { return i >= 0 && i < p.days.length; }));
+    });
+    return { track: planById(saved.track).id, done: done, view: null, settling: false, timer: null };
+  })();
+
+  function savePlan() {
+    var out = {};
+    PLANS.forEach(function (p) {
+      out[p.id] = Array.from(plan.done[p.id]).sort(function (a, b) { return a - b; });
+    });
+    writeStore(PLAN_KEY, { track: plan.track, done: out });
+  }
+
+  function firstUnread(p) {
+    var done = plan.done[p.id];
+    for (var i = 0; i < p.days.length; i++) if (!done.has(i)) return i;
+    return -1;
+  }
+
+  // "#plan=love~<bits>,gospels~<bits>,bible~<bits>", one bit per reading
+  function planCode() {
+    return PLANS.map(function (p) {
+      var bytes = new Uint8Array(Math.ceil(p.days.length / 8));
+      plan.done[p.id].forEach(function (i) { bytes[i >> 3] |= 1 << (i & 7); });
+      return p.id + "~" + bytesToB64Url(bytes);
+    }).join(",");
+  }
+
+  // Returns how many readings a progress link added, or null when there was no such link.
+  function readPlanFromLink() {
+    var m = location.hash.match(/^#plan=([a-z]+~[A-Za-z0-9_-]*(?:,[a-z]+~[A-Za-z0-9_-]*)*)$/);
+    if (!m) return null;
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ }
+    var added = 0;
+    m[1].split(",").forEach(function (part) {
+      var bits = part.split("~");
+      var p = PLANS.filter(function (x) { return x.id === bits[0]; })[0];
+      if (!p) return;
+      var bytes;
+      try { bytes = b64UrlToBytes(bits[1]); } catch (e) { return; }
+      for (var i = 0; i < p.days.length && (i >> 3) < bytes.length; i++) {
+        if ((bytes[i >> 3] >> (i & 7)) & 1 && !plan.done[p.id].has(i)) {
+          plan.done[p.id].add(i);
+          added++;
+        }
+      }
+    });
+    if (added) savePlan();
+    return added;
+  }
+
+  function renderPlan() {
+    var p = planById(plan.track);
+    var done = plan.done[p.id];
+    var n = p.days.length;
+    var next = firstUnread(p);
+    var idx = plan.view !== null ? plan.view : next;
+
+    $("#plan-tracks").querySelectorAll("button").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-plan") === p.id ? "true" : "false");
+    });
+
+    var about = $("#plan-about");
+    about.textContent = p.about;
+    var left = n - done.size;
+    if (left > 0) {
+      var finish = dayNumber(new Date()) + left - 1;
+      about.append(" At one a day, you will finish on " + fmtDay(finish, { day: "numeric", month: "long", year: "numeric" }) +
+        (finish < dayNumber(WEDDING) ? ", before our wedding ♥" : "."));
+    }
+
+    var label = $("#plan-day");
+    var title = $("#plan-day-title");
+    var ref = $("#plan-day-ref");
+    var ask = $("#plan-day-ask");
+    var open = $("#plan-open");
+    var btn = $("#plan-done");
+    if (idx === -1) {
+      label.textContent = p.title + " · complete";
+      title.textContent = "Finished together ♥";
+      ref.textContent = "All " + fmtNum(n) + " readings, read together";
+      ask.textContent = "Praise God! Choose another plan above, or begin this one again.";
+      open.hidden = true;
+      btn.textContent = "Begin again";
+      btn.setAttribute("aria-pressed", "false");
+      btn.setAttribute("data-mode", "restart");
+    } else {
+      var day = p.days[idx];
+      var isDone = done.has(idx);
+      label.textContent = "Day " + fmtNum(idx + 1) + " of " + fmtNum(n) + " · " + p.title;
+      title.textContent = day.title || day.ref;
+      ref.textContent = day.title ? day.ref : "";
+      ask.textContent = day.ask || "Share one thing that stood out to you, then pray it back to God together.";
+      open.hidden = false;
+      open.href = bibleLink(day.ref);
+      btn.textContent = isDone ? "Read together ✓" : "We read it together";
+      btn.setAttribute("aria-pressed", isDone ? "true" : "false");
+      btn.setAttribute("data-mode", "toggle");
+    }
+    $("#plan-back").hidden = plan.settling || plan.view === null || plan.view === next;
+
+    $("#plan-bar").style.width = (done.size / n) * 100 + "%";
+    $("#plan-count").textContent = fmtNum(done.size) + " of " + fmtNum(n) + " read together · " + Math.floor((done.size / n) * 100) + "%";
+
+    var altar = $("#altar-plan");
+    altar.textContent = "";
+    if (next === -1) {
+      altar.textContent = "You finished " + p.title + " together ♥";
+    } else {
+      altar.append(p.title + ", day " + fmtNum(next + 1) + ": ");
+      altar.appendChild(el("strong", null, p.days[next].ref));
+    }
+
+    if ($("#plan-all").open) renderPlanList();
+  }
+
+  function renderPlanList() {
+    var p = planById(plan.track);
+    var done = plan.done[p.id];
+    var current = plan.view !== null ? plan.view : firstUnread(p);
+    var root = $("#plan-list");
+    root.textContent = "";
+
+    function dayButton(i, cls) {
+      var b = el("button", cls + (done.has(i) ? " is-done" : "") + (i === current ? " is-current" : ""));
+      b.type = "button";
+      b.setAttribute("data-day", i);
+      b.setAttribute("aria-label", "Day " + (i + 1) + ", " + p.days[i].ref + (done.has(i) ? ", read" : ""));
+      return b;
+    }
+
+    if (!p.byBook) {
+      var list = el("ol", "plan-days");
+      p.days.forEach(function (d, i) {
+        var b = dayButton(i, "plan-day");
+        b.appendChild(el("span", "plan-day__num", done.has(i) ? "✓" : String(i + 1)));
+        b.appendChild(el("span", "plan-day__title", d.title));
+        b.appendChild(el("span", "plan-day__ref", d.ref));
+        var li = el("li");
+        li.appendChild(b);
+        list.appendChild(li);
+      });
+      root.appendChild(list);
+      return;
+    }
+
+    var books = [];
+    p.days.forEach(function (d, i) {
+      if (!books.length || books[books.length - 1].name !== d.book) books.push({ name: d.book, days: [] });
+      books[books.length - 1].days.push(i);
+    });
+    // One folding row per book; the book with the current reading starts open.
+    books.forEach(function (bk) {
+      var read = bk.days.filter(function (i) { return done.has(i); }).length;
+      var row = el("details", "plan-book" + (read === bk.days.length ? " is-done" : ""));
+      row.open = bk.days.indexOf(current) !== -1;
+      var head = el("summary", "plan-book__head");
+      head.appendChild(el("span", "plan-book__name", bk.name));
+      head.appendChild(el("span", "plan-book__count", read === bk.days.length ? "✓ " + plural(read, "chapter") : read + " of " + bk.days.length));
+      row.appendChild(head);
+      var pills = el("div", "plan-book__chapters");
+      bk.days.forEach(function (i, k) {
+        var b = dayButton(i, "plan-pill");
+        b.textContent = String(k + 1);
+        pills.appendChild(b);
+      });
+      row.appendChild(pills);
+      root.appendChild(row);
+    });
+  }
+
+  function initPlan() {
+    var tracks = $("#plan-tracks");
+    PLANS.forEach(function (p) {
+      var b = el("button", "plan-track");
+      b.type = "button";
+      b.setAttribute("data-plan", p.id);
+      b.appendChild(el("span", "plan-track__title", p.title));
+      b.appendChild(el("span", "plan-track__len", fmtNum(p.days.length) + " days"));
+      b.addEventListener("click", function () {
+        plan.track = p.id;
+        plan.view = null;
+        savePlan();
+        renderPlan();
+      });
+      tracks.appendChild(b);
+    });
+
+    $("#plan-done").addEventListener("click", function () {
+      var p = planById(plan.track);
+      var done = plan.done[p.id];
+      if (this.getAttribute("data-mode") === "restart") {
+        if (!window.confirm("Begin " + p.title + " again from day 1?")) return;
+        done.clear();
+        plan.view = null;
+        savePlan();
+        renderPlan();
+        return;
+      }
+      var idx = plan.view !== null ? plan.view : firstUnread(p);
+      clearTimeout(plan.timer);
+      if (done.has(idx)) {
+        done.delete(idx);
+        savePlan();
+        renderPlan();
+        return;
+      }
+      done.add(idx);
+      savePlan();
+      var r = this.getBoundingClientRect();
+      burst(r.left + r.width / 2, r.top + r.height / 2, 24);
+      // Stay on the reading for a moment to show the tick, then move on to the next one.
+      plan.view = idx;
+      plan.settling = true;
+      renderPlan();
+      plan.timer = setTimeout(function () {
+        plan.view = null;
+        plan.settling = false;
+        renderPlan();
+      }, 1400);
+    });
+
+    $("#plan-back").addEventListener("click", function () {
+      plan.view = null;
+      renderPlan();
+    });
+
+    $("#plan-all").addEventListener("toggle", function () {
+      if (this.open) renderPlanList();
+    });
+
+    $("#plan-list").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-day]");
+      if (!b) return;
+      clearTimeout(plan.timer);
+      plan.settling = false;
+      plan.view = +b.getAttribute("data-day");
+      renderPlan();
+      $(".plan-today").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+    });
+
+    var me = readStore(ME_KEY);
+    var other = me === "Jemimah" || me === "Joel" ? otherOf(me) : null;
+    var shareBtn = $("#plan-share");
+    if (other) shareBtn.textContent = "Send our progress to " + other;
+    shareBtn.addEventListener("click", function () {
+      var status = $("#plan-status");
+      var where = other ? other + "’s phone" : "the other phone";
+      shareLink({
+        url: location.origin + location.pathname + "#plan=" + planCode(),
+        title: "Our Bible plan",
+        text: "Our Bible plan progress ♥ Open it to keep our readings in step.",
+        status: status,
+        shared: "Sent! Open the link on " + where + " ♥",
+        copied: "Link copied. Open it on " + where + " ♥",
+        done: function (msg) { status.textContent = msg; }
+      });
+    });
+
+    renderPlan();
   }
 
   /* ---------- Envelope, letter and proposal ---------- */
 
   var proposal = {};
 
-  function initProposal(note) {
+  function initProposal(note, afterClose) {
     var overlay = $("#proposal");
     var stage = $("#envelope-stage");
     var seal = $("#seal");
@@ -1093,6 +1392,10 @@
           replyAs = null;
           $("#letters").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
           $("#note-text").focus({ preventScroll: true });
+        } else if (afterClose) {
+          var fn = afterClose;
+          afterClose = null;
+          fn();
         }
       }, 900);
     }
@@ -1278,9 +1581,11 @@
   renderRoles();
   renderPromises();
   var incoming = readNoteFromLink(); // before the letters list is drawn, so it is kept there
+  var planAdded = readPlanFromLink();
   renderLibrary();
   renderPrep();
   renderDaily();
+  initPlan();
   startCountdown();
   showTally(yesState().days);
   initLetters();
@@ -1289,6 +1594,11 @@
   initVisualiser();
   initTopbar();
   initReveal();
-  initProposal(incoming);
+  initProposal(incoming, planAdded === null ? null : function () {
+    $("#plan-status").textContent = planAdded
+      ? "Added " + plural(planAdded, "reading") + " from the other phone ♥"
+      : "Both phones are already in step ♥";
+    $("#plan").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+  });
   initFooter();
 })();
