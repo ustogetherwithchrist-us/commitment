@@ -5,8 +5,15 @@
   var WEDDING = new Date(2032, 9, 16, 0, 0, 0); // 16 Oct 2032, midnight local time
   var DAY_MS = 864e5;
   var YES_KEY = "jj-said-yes";
+  var PRAY_KEY = "jj-prayed";
+  var PREP_KEY = "jj-prep";
+  var LETTERS_KEY = "jj-letters";
+  var ME_KEY = "jj-me";
+  var NOTE_MAX = 800;
 
   var SONG = {
+    title: "Goodness of God",
+    artist: "Bethel Music",
     youtubeId: "SuPCTBmISzQ",
     start: 47, // seconds into the song where playback (and every loop) begins
     // Optional: put your own copy of the song at this path and the visualiser
@@ -61,6 +68,23 @@
   }
 
   function plural(n, word) { return n + " " + word + (n === 1 ? "" : "s"); }
+
+  function fmtNum(n) { return n.toLocaleString("en-GB"); }
+
+  // Calendar date for a whole-day number (see dayNumber)
+  function fmtDay(n, opts) {
+    return new Date(n * DAY_MS).toLocaleDateString("en-GB", Object.assign({ timeZone: "UTC" }, opts));
+  }
+
+  function fmtKey(key) {
+    var p = String(key || "").split("-");
+    if (p.length !== 3) return "";
+    return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  function bibleLink(ref) {
+    return "https://www.biblegateway.com/passage/?search=" + encodeURIComponent(ref.replace("–", "-")) + "&version=NKJV";
+  }
 
   /* ---------- Content sections ---------- */
 
@@ -179,14 +203,17 @@
     return out;
   }
 
-  function renderToday() {
+  function renderDaily() {
     var now = new Date();
     var n = dayNumber(now);
     var verses = allVerses();
     var promises = allPromises();
-    // Step through the lists by a large prime so consecutive days jump between themes.
+    // Step through each list by a large prime so consecutive days jump between themes.
     var verse = verses[(n * 7919) % verses.length];
     var promise = promises[(n * 104729) % promises.length];
+    var question = C.questions[(n * 15485863) % C.questions.length];
+    var prayer = C.prayers[(n * 32452843) % C.prayers.length];
+    var proverb = "Proverbs " + now.getDate();
 
     $("#today-date").textContent = now.toLocaleDateString("en-GB", {
       weekday: "long", day: "numeric", month: "long", year: "numeric"
@@ -194,8 +221,43 @@
     var holder = $("#verse-of-day");
     holder.appendChild(el("p", null, verse.text));
     holder.appendChild(el("cite", null, verse.ref));
+    $("#verse-link").href = bibleLink(verse.ref);
     $("#promise-of-day").textContent = promise.text;
     $("#promise-of-day-ref").textContent = promise.ref || "";
+    $("#question-of-day").textContent = question;
+    $("#prayer-of-day").textContent = prayer;
+    $("#proverb-ref").textContent = proverb;
+    $("#proverb-link").href = bibleLink(proverb);
+
+    initPrayed();
+  }
+
+  function initPrayed() {
+    var btn = $("#pray-btn");
+    var tally = $("#pray-tally");
+    var today = dateKey(new Date());
+
+    function show() {
+      var data = readStore(PRAY_KEY) || { days: 0, last: null };
+      var done = data.last === today;
+      btn.disabled = done;
+      btn.textContent = done ? "Prayed together today ✓" : "We prayed together today";
+      tally.textContent = data.days ? "Prayed together on " + plural(data.days, "day") + " · saved on this phone" : "";
+    }
+
+    btn.addEventListener("click", function () {
+      var data = readStore(PRAY_KEY) || { days: 0, last: null };
+      if (data.last !== today) {
+        data.days += 1;
+        data.last = today;
+        writeStore(PRAY_KEY, data);
+      }
+      var r = btn.getBoundingClientRect();
+      burst(r.left + r.width / 2, r.top + r.height / 2, 18);
+      show();
+    });
+
+    show();
   }
 
   /* ---------- Countdown ---------- */
@@ -206,6 +268,7 @@
     var clock = $("#countdown-clock");
     var done = $("#countdown-done");
     var caption = $("#countdown-caption");
+    var topDays = $("#topbar-days");
 
     caption.textContent = WEDDING.toLocaleDateString("en-GB", {
       weekday: "long", day: "numeric", month: "long", year: "numeric"
@@ -230,7 +293,9 @@
         return false;
       }
       var s = Math.floor(diff / 1000);
-      nums.days.textContent = Math.floor(s / 86400).toLocaleString("en-GB");
+      var days = Math.floor(s / 86400);
+      nums.days.textContent = fmtNum(days);
+      topDays.textContent = plural(days, "day").replace(/^\d+/, fmtNum(days)) + " to go";
       nums.hours.textContent = pad(Math.floor((s % 86400) / 3600));
       nums.minutes.textContent = pad(Math.floor((s % 3600) / 60));
       nums.seconds.textContent = pad(s % 60);
@@ -239,6 +304,52 @@
 
     if (tick()) {
       var timer = setInterval(function () { if (!tick()) clearInterval(timer); }, 1000);
+    }
+    renderStats();
+  }
+
+  var MILESTONES = [2000, 1500, 1000, 750, 500, 365, 300, 200, 100, 50, 30, 14, 7, 1];
+
+  function renderStats() {
+    var now = new Date();
+    var today = dayNumber(now);
+    var wedding = dayNumber(WEDDING);
+    var left = wedding - today;
+    var top = $("#topbar-days");
+
+    if (left <= 0) {
+      $("#stats").hidden = true;
+      $(".calendar-btn").hidden = true;
+      top.textContent = left === 0 ? "Our wedding day" : "Married in Christ";
+      return;
+    }
+
+    var months = (WEDDING.getFullYear() - now.getFullYear()) * 12 + (WEDDING.getMonth() - now.getMonth());
+    if (WEDDING.getDate() < now.getDate()) months -= 1;
+    var sundays = 0;
+    for (var d = today; d < wedding; d++) if ((d + 4) % 7 === 0) sundays++; // day 0 (1 Jan 1970) was a Thursday
+
+    $("#stat-months").textContent = fmtNum(Math.max(0, months));
+    $("#stat-weeks").textContent = fmtNum(Math.floor(left / 7));
+    $("#stat-sundays").textContent = fmtNum(sundays);
+
+    var line = $("#next-milestone");
+    line.textContent = "";
+    if (MILESTONES.indexOf(left) !== -1) {
+      line.append("Today we are exactly ");
+      line.appendChild(el("strong", null, plural(left, "day").replace(/^\d+/, fmtNum(left))));
+      line.append(" from our wedding ♥");
+      return;
+    }
+    for (var i = 0; i < MILESTONES.length; i++) {
+      var m = MILESTONES[i];
+      if (m < left) {
+        line.append("Next milestone: ");
+        line.appendChild(el("strong", null, fmtNum(m) + " days to go"));
+        line.append(" on " + fmtDay(wedding - m, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) +
+          ", in " + plural(left - m, "day").replace(/^\d+/, fmtNum(left - m)) + ".");
+        return;
+      }
     }
   }
 
@@ -288,13 +399,31 @@
   };
   var musicBtn = $("#music-btn");
   var musicLink = $("#music-link");
+  var musicTitle = $("#music-title");
+  var musicSub = $("#music-sub");
+  var collapseTimer = null;
 
   function updateMusicUI() {
     var audible = music.playing && !music.muted;
+    var waiting = !music.failed && !audible && !music.userPaused;
     musicBtn.classList.toggle("is-playing", audible);
-    musicBtn.classList.toggle("is-muted", !music.failed && !audible && !music.userPaused);
+    musicBtn.classList.toggle("is-muted", waiting);
     musicBtn.setAttribute("aria-pressed", audible ? "true" : "false");
-    musicBtn.setAttribute("aria-label", audible ? "Pause our song" : "Play our song");
+    musicBtn.setAttribute("aria-label", (audible ? "Pause our song, " : "Play our song, ") + SONG.title);
+
+    var title = audible ? SONG.title : music.userPaused ? "Paused" : "Tap for our song";
+    var sub = audible ? "Now playing · " + SONG.artist : music.userPaused ? "Tap to play " + SONG.title : SONG.title;
+    if (musicTitle.textContent !== title) {
+      musicTitle.textContent = title;
+      musicSub.textContent = sub;
+      // Show the label for a moment whenever the state changes, then tuck it away.
+      musicBtn.classList.add("is-expanded");
+      clearTimeout(collapseTimer);
+      collapseTimer = setTimeout(function () {
+        if (!musicBtn.classList.contains("is-muted")) musicBtn.classList.remove("is-expanded");
+      }, 5000);
+    }
+    if (waiting) musicBtn.classList.add("is-expanded");
   }
 
   function musicFallback() {
@@ -699,9 +828,9 @@
     }
   }
 
-  function burst(x, y) {
+  function burst(x, y, count) {
     if (reduceMotion) return;
-    for (var i = 0; i < 40; i++) {
+    for (var i = 0; i < (count || 40); i++) {
       var s = el("span", "spark");
       var angle = Math.random() * Math.PI * 2;
       var dist = 80 + Math.random() * 200;
@@ -715,21 +844,193 @@
     }
   }
 
-  /* ---------- Envelope + proposal ---------- */
+  /* ---------- Love letters ----------
+   * A letter travels inside the link itself (after the #), so nothing is stored on a server.
+   * Opening the link shows it inside the sealed envelope on the other phone.
+   */
+
+  function toB64Url(str) {
+    var bytes = new TextEncoder().encode(str);
+    var bin = "";
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  function fromB64Url(code) {
+    var b64 = code.replace(/-/g, "+").replace(/_/g, "/");
+    while (b64.length % 4) b64 += "=";
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  function otherOf(name) { return name === "Joel" ? "Jemimah" : "Joel"; }
+
+  function decodeNote(code) {
+    try {
+      var o = JSON.parse(fromB64Url(code));
+      if (!o || (o.f !== "Jemimah" && o.f !== "Joel") || typeof o.m !== "string" || !o.m.trim()) return null;
+      return {
+        id: code,
+        from: o.f,
+        to: otherOf(o.f),
+        msg: o.m.slice(0, NOTE_MAX),
+        date: /^\d{4}-\d{2}-\d{2}$/.test(o.d) ? o.d : null
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function readNoteFromLink() {
+    var m = location.hash.match(/^#note=([A-Za-z0-9_-]{4,6000})$/);
+    if (!m) return null;
+    var note = decodeNote(m[1]);
+    // Tidy the address so a reload shows the normal page; the letter is kept below.
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ }
+    if (note) keepLetter(note, "received");
+    return note;
+  }
+
+  function letters() {
+    var list = readStore(LETTERS_KEY);
+    return Array.isArray(list) ? list : [];
+  }
+
+  function keepLetter(note, kind) {
+    var list = letters();
+    if (list.some(function (l) { return l.id === note.id; })) return;
+    list.push({ id: note.id, kind: kind, from: note.from, to: note.to, msg: note.msg, date: note.date });
+    writeStore(LETTERS_KEY, list.slice(-60));
+  }
+
+  function renderKept() {
+    var root = $("#kept-list");
+    var list = letters().slice().reverse();
+    root.textContent = "";
+    $("#kept-empty").hidden = list.length > 0;
+    list.forEach(function (l) {
+      var item = el("article", "letter letter--" + l.kind);
+      item.appendChild(el("p", "letter__meta",
+        (l.kind === "sent" ? "Sent · " : "Received · ") + "From " + l.from + " to " + l.to + (l.date ? " · " + fmtKey(l.date) : "")));
+      item.appendChild(el("p", "letter__msg", l.msg));
+      var remove = el("button", "letter__remove", "×");
+      remove.type = "button";
+      remove.setAttribute("aria-label", "Remove this letter from this phone");
+      remove.addEventListener("click", function () {
+        if (!window.confirm("Remove this letter from this phone?")) return;
+        writeStore(LETTERS_KEY, letters().filter(function (x) { return x.id !== l.id; }));
+        renderKept();
+      });
+      item.appendChild(remove);
+      root.appendChild(item);
+    });
+  }
+
+  function initLetters() {
+    var form = $("#compose");
+    var text = $("#note-text");
+    var count = $("#note-count");
+    var status = $("#compose-status");
+    var me = readStore(ME_KEY);
+
+    function setFrom(name) {
+      form.querySelectorAll('input[name="from"]').forEach(function (r) { r.checked = r.value === name; });
+      $("#note-label").textContent = name ? "Your letter to " + otherOf(name) : "Your letter";
+    }
+
+    setFrom(me === "Jemimah" || me === "Joel" ? me : null);
+    form.addEventListener("change", function (e) {
+      if (e.target.name !== "from") return;
+      writeStore(ME_KEY, e.target.value);
+      setFrom(e.target.value);
+    });
+    text.addEventListener("input", function () { count.textContent = text.value.length + " / " + NOTE_MAX; });
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var chosen = form.querySelector('input[name="from"]:checked');
+      var msg = text.value.trim().slice(0, NOTE_MAX);
+      if (!chosen) { status.textContent = "Choose who the letter is from ♥"; return; }
+      if (!msg) { status.textContent = "Write a few words first ♥"; text.focus(); return; }
+
+      var from = chosen.value;
+      var to = otherOf(from);
+      var date = dateKey(new Date());
+      var code = toB64Url(JSON.stringify({ f: from, m: msg, d: date }));
+      var url = location.origin + location.pathname + "#note=" + code;
+      keepLetter({ id: code, from: from, to: to, msg: msg, date: date }, "sent");
+      renderKept();
+
+      function sent(note) {
+        status.textContent = note;
+        text.value = "";
+        count.textContent = "0 / " + NOTE_MAX;
+      }
+
+      function copy() {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(url).then(
+            function () { sent("Sealed! The link is copied. Paste it to " + to + " ♥"); },
+            function () { status.textContent = url; });
+        } else {
+          status.textContent = url;
+        }
+      }
+
+      if (navigator.share) {
+        navigator.share({ title: "A sealed letter for " + to, text: "I sealed a letter for you, " + to + " 💌", url: url })
+          .then(function () { sent("Sealed and sent to " + to + " ♥"); }, function (err) {
+            if (!err || err.name !== "AbortError") copy();
+          });
+      } else {
+        copy();
+      }
+    });
+
+    renderKept();
+  }
+
+  /* ---------- Envelope, letter and proposal ---------- */
 
   var proposal = {};
 
-  function initProposal() {
+  function initProposal(note) {
     var overlay = $("#proposal");
     var stage = $("#envelope-stage");
     var seal = $("#seal");
+    var noteCard = $("#note-card");
     var card = $("#proposal-card");
     var question = $("#proposal-question");
     var tally = $("#proposal-tally");
     var buttons = card.querySelectorAll("[data-yes]");
     var timers = [];
+    var pending = note;
+    var replyAs = null;
 
     function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+
+    function dressEnvelope() {
+      var title = $("#envelope-title");
+      title.textContent = "";
+      if (pending) {
+        $("#envelope-kicker").textContent = "Sealed with love";
+        title.append("A letter from ");
+        title.appendChild(el("span", "royal", pending.from));
+        title.append(" for ");
+        title.appendChild(el("span", "royal", pending.to));
+        $("#envelope-letter-text").textContent = "For you, " + pending.to + " ♥";
+      } else {
+        $("#envelope-kicker").textContent = "The Holy Matrimony Celebration";
+        title.append("A letter for ");
+        var names = el("span", "royal", "Jemimah ");
+        names.appendChild(el("span", "amp", "&"));
+        names.append(" Joel");
+        title.appendChild(names);
+        $("#envelope-letter-text").textContent = "Will you marry me?";
+      }
+    }
 
     function reset() {
       timers.forEach(clearTimeout);
@@ -737,8 +1038,10 @@
       overlay.classList.remove("is-closing", "is-answered");
       stage.classList.remove("is-open", "is-gone");
       stage.hidden = false;
+      noteCard.hidden = true;
       card.hidden = true;
       question.textContent = "Will you marry me?";
+      dressEnvelope();
       var state = yesState();
       if (state.last === dateKey(new Date())) tally.textContent = "You already said yes today. Say it once more ♥";
       else if (state.days > 0) tally.textContent = "You have said yes on " + plural(state.days, "day") + " so far ♥";
@@ -746,6 +1049,21 @@
       overlay.hidden = false;
       document.body.classList.add("is-locked");
       seal.focus({ preventScroll: true });
+    }
+
+    function showProposal() {
+      noteCard.hidden = true;
+      card.hidden = false;
+      buttons[0].focus({ preventScroll: true });
+    }
+
+    function showNote() {
+      $("#note-to").textContent = "My dearest " + pending.to + ",";
+      $("#note-msg").textContent = pending.msg;
+      $("#note-from").textContent = "— " + pending.from;
+      $("#note-date").textContent = pending.date ? fmtKey(pending.date) : "";
+      noteCard.hidden = false;
+      $("#note-continue").focus({ preventScroll: true });
     }
 
     function openEnvelope() {
@@ -757,18 +1075,34 @@
       later(function () { stage.classList.add("is-gone"); }, reduceMotion ? 100 : 2100);
       later(function () {
         stage.hidden = true;
-        card.hidden = false;
-        buttons[0].focus({ preventScroll: true });
+        if (pending) showNote();
+        else showProposal();
       }, reduceMotion ? 200 : 2600);
     }
 
     function close() {
       overlay.classList.add("is-closing");
       document.body.classList.remove("is-locked");
-      later(function () { overlay.hidden = true; }, 900);
+      pending = null;
+      later(function () {
+        overlay.hidden = true;
+        if (replyAs) {
+          writeStore(ME_KEY, replyAs);
+          var radio = document.querySelector('#compose input[value="' + replyAs + '"]');
+          if (radio) { radio.checked = true; radio.dispatchEvent(new Event("change", { bubbles: true })); }
+          replyAs = null;
+          $("#letters").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+          $("#note-text").focus({ preventScroll: true });
+        }
+      }, 900);
     }
 
     seal.addEventListener("click", openEnvelope);
+    $("#note-continue").addEventListener("click", showProposal);
+    $("#note-reply").addEventListener("click", function () {
+      replyAs = pending.to;
+      showProposal();
+    });
 
     buttons.forEach(function (btn) {
       btn.addEventListener("click", function (e) {
@@ -790,7 +1124,8 @@
     // Keep keyboard focus inside the overlay while it is open.
     overlay.addEventListener("keydown", function (e) {
       if (e.key !== "Tab") return;
-      var focusables = card.hidden ? [seal] : Array.prototype.slice.call(buttons);
+      var focusables = !card.hidden ? Array.prototype.slice.call(buttons)
+        : !noteCard.hidden ? [$("#note-continue"), $("#note-reply")] : [seal];
       var first = focusables[0];
       var last = focusables[focusables.length - 1];
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
@@ -803,6 +1138,115 @@
     };
 
     reset();
+  }
+
+  /* ---------- Preparing together ---------- */
+
+  function renderPrep() {
+    var root = $("#prep-list");
+    var done = readStore(PREP_KEY) || {};
+    var ids = [];
+
+    C.preparation.forEach(function (group, gi) {
+      var card = el("article", "card prep-group");
+      card.appendChild(el("h3", "card__title", group.title));
+      group.items.forEach(function (text, ii) {
+        var id = "prep-" + gi + "-" + ii;
+        ids.push(id);
+        var label = el("label", "check");
+        var input = document.createElement("input");
+        input.type = "checkbox";
+        input.checked = !!done[id];
+        input.addEventListener("change", function () {
+          if (input.checked) done[id] = true;
+          else delete done[id];
+          writeStore(PREP_KEY, done);
+          update();
+        });
+        label.appendChild(input);
+        label.appendChild(el("span", null, text));
+        card.appendChild(label);
+      });
+      root.appendChild(card);
+    });
+
+    function update() {
+      var n = ids.filter(function (id) { return done[id]; }).length;
+      $("#prep-bar").style.width = (n / ids.length) * 100 + "%";
+      $("#prep-count").textContent = n === ids.length
+        ? "All " + ids.length + " done. Praise God! ♥"
+        : n + " of " + ids.length + " prepared";
+    }
+    update();
+  }
+
+  /* ---------- Top bar, menu and gentle reveal ---------- */
+
+  function initTopbar() {
+    var bar = $("#topbar");
+    var hero = $(".hero");
+    var menu = $("#menu");
+    var menuBtn = $("#menu-btn");
+    var ticking = false;
+
+    function check() {
+      ticking = false;
+      bar.classList.toggle("is-visible", window.scrollY > hero.offsetHeight * 0.6);
+    }
+    window.addEventListener("scroll", function () {
+      if (!ticking) { ticking = true; requestAnimationFrame(check); }
+    }, { passive: true });
+    check();
+
+    function openMenu() {
+      menu.hidden = false;
+      menuBtn.setAttribute("aria-expanded", "true");
+      document.body.classList.add("is-locked");
+      menu.querySelector("a").focus();
+    }
+    function closeMenu(restoreFocus) {
+      menu.hidden = true;
+      menuBtn.setAttribute("aria-expanded", "false");
+      document.body.classList.remove("is-locked");
+      if (restoreFocus) menuBtn.focus();
+    }
+
+    menuBtn.addEventListener("click", openMenu);
+    $("#menu-close").addEventListener("click", function () { closeMenu(true); });
+    menu.addEventListener("click", function (e) {
+      if (e.target.closest("a")) closeMenu(false);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !menu.hidden) closeMenu(true);
+    });
+  }
+
+  function initReveal() {
+    if (reduceMotion || !("IntersectionObserver" in window)) return;
+    var targets = [];
+    document.querySelectorAll("main .container").forEach(function (box) {
+      Array.prototype.forEach.call(box.children, function (child) {
+        if (child.matches(".grid, .altar, .letters, .stats")) {
+          Array.prototype.forEach.call(child.children, function (item, i) {
+            item.style.setProperty("--delay", Math.min(i, 4) * 0.08 + "s");
+            targets.push(item);
+          });
+        } else {
+          targets.push(child);
+        }
+      });
+    });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-visible");
+        io.unobserve(entry.target);
+      });
+    }, { rootMargin: "0px 0px -6% 0px", threshold: 0 });
+    targets.forEach(function (t) {
+      t.classList.add("reveal");
+      io.observe(t);
+    });
   }
 
   /* ---------- Footer actions ---------- */
@@ -833,13 +1277,18 @@
   renderPillars();
   renderRoles();
   renderPromises();
+  var incoming = readNoteFromLink(); // before the letters list is drawn, so it is kept there
   renderLibrary();
-  renderToday();
+  renderPrep();
+  renderDaily();
   startCountdown();
   showTally(yesState().days);
+  initLetters();
   initMusic();
   initPetals();
   initVisualiser();
-  initProposal();
+  initTopbar();
+  initReveal();
+  initProposal(incoming);
   initFooter();
 })();

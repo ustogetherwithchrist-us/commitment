@@ -435,5 +435,119 @@ window.CONTENT = {
         }
       ]
     }
+  ],
+
+  // One a day: something to talk about together
+  questions: [
+    "How have you seen God’s goodness in your life this week?",
+    "What is one way I can serve you better this week?",
+    "Which verse has been on your heart lately, and why?",
+    "How can I pray for you today?",
+    "What do you want our home to feel like for the people who visit it?",
+    "What did you admire in your parents’ marriage that you want us to keep?",
+    "What is a dream you would love us to chase together?",
+    "When do you feel most loved by me?",
+    "What is one thing you are thankful for about us today?",
+    "How do we want to handle disagreements, so we never go to sleep angry?",
+    "What does a Christ-centered marriage look like on an ordinary Tuesday?",
+    "Which couple’s marriage inspires you, and why?",
+    "What is one habit you would like us to build together this year?",
+    "How can we keep the Lord’s Day special as a family?",
+    "What do you hope our children will remember about our home?",
+    "What has God been teaching you in this season of waiting?",
+    "What is your favorite memory of us so far?",
+    "How can we honor both of our families well?",
+    "What does “love suffers long and is kind” mean to you in real life?",
+    "Where would you love us to serve together in the church?",
+    "How do you want us to give generously as a family?",
+    "What is one fear about the future that we can give to God together?",
+    "What is a small thing I do that makes your day better?",
+    "Which hymn or worship song would you love at our wedding?",
+    "How can we protect our time with God when life gets busy?",
+    "What does forgiveness look like for you when you have been hurt?",
+    "How can we encourage each other’s calling and gifts?",
+    "Where would you love us to travel together someday, and why?",
+    "What do you want our family prayer time to look like?",
+    "Which of our promises means the most to you today?",
+    "How can we stay patient and pure while we wait?",
+    "What would you like us to learn together before our wedding day?",
+    "How do you like to be comforted when you are sad or tired?",
+    "What does “as for me and my house, we will serve the LORD” look like for us?",
+    "What made you smile about me this week?",
+    "Which Bible character’s faith would you love our family to have?",
+    "How can we celebrate the small milestones on our way to the altar?",
+    "What does rest look like for you, and how can I protect it?",
+    "Which moment of our wedding day are you most looking forward to?",
+    "How would you describe God’s love for us in one sentence?",
+    "What should we already be praying for our future children?",
+    "What is one thing you want to tell me today that you have not said yet?"
+  ],
+
+  // One a day: something to pray about together
+  prayers: [
+    "Thank God together for one thing you love about each other.",
+    "Pray for each other’s parents and families, by name.",
+    "Ask God to make your love patient and kind.",
+    "Pray for wisdom in every decision you make together.",
+    "Pray for pure hearts and faithfulness while you wait.",
+    "Pray for the children God may one day give you.",
+    "Pray for your church and the ministries you serve in.",
+    "Ask God to help you forgive quickly and completely.",
+    "Pray for each other’s work, studies and calling.",
+    "Pray for health and protection over each other.",
+    "Thank God for His faithfulness in your story so far.",
+    "Pray for the couples and friends who walk alongside you.",
+    "Ask the Holy Spirit to grow His fruit in both of you (Galatians 5:22–23).",
+    "Pray for your future home, that Christ would be its center.",
+    "Ask for humble hearts that love to serve one another.",
+    "Pray for your finances, and for generous hearts.",
+    "Pray for the pastor and everyone who will bless your wedding.",
+    "Ask God to keep His Word at the center of your days.",
+    "Pray for joy and laughter in your home.",
+    "Pray for each other’s friendships and influences.",
+    "Commit 16 October 2032 into God’s hands."
+  ],
+
+  // The waiting years: how we prepare our hearts and our home
+  preparation: [
+    {
+      title: "Growing in Christ, together",
+      items: [
+        "Pray together every day",
+        "Read one Gospel together, a chapter a day",
+        "Memorize Ecclesiastes 4:12 and Mark 10:9 together",
+        "Serve together in a ministry at church",
+        "Find a mentor couple who will pray with us"
+      ]
+    },
+    {
+      title: "Knowing each other’s hearts",
+      items: [
+        "Learn each other’s love languages",
+        "Talk through our roles in marriage from Ephesians 5",
+        "Agree on how we will handle conflict and forgiveness",
+        "Share our hopes for children and parenting",
+        "Talk about where we would love to build our home"
+      ]
+    },
+    {
+      title: "Building a home on the Rock",
+      items: [
+        "Plan a budget and a habit of giving together",
+        "Spend time with both families and honor them",
+        "Share our health histories openly",
+        "Talk about careers, rest and the Lord’s Day"
+      ]
+    },
+    {
+      title: "As the day draws near",
+      items: [
+        "Complete pre-marital counseling with our pastor",
+        "Confirm the church and the pastor who will marry us",
+        "Write our vows and practice them aloud",
+        "Choose the hymns and Scripture readings",
+        "Set aside a quiet day of prayer before the wedding"
+      ]
+    }
   ]
 };

@@ -8,11 +8,19 @@
   <meta name="theme-color" content="#FBF7EF">
   <meta property="og:title" content="Jemimah &amp; Joel · Holy Matrimony">
   <meta property="og:description" content="United in Christ · Bound in Eternal Love · 16 October 2032">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 104'%3E%3Cg fill='none' stroke='%23B8893B' stroke-width='6'%3E%3Cpath d='M60 4V34M50 14H70'/%3E%3Ccircle cx='46' cy='68' r='24'/%3E%3Ccircle cx='74' cy='68' r='24'/%3E%3C/g%3E%3C/svg%3E">
+  <meta property="og:image" content="images/couple.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="J &amp; J">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&family=Noto+Serif+Telugu:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <script>document.documentElement.classList.add("js");</script>
 </head>
 <body class="is-locked">
 
@@ -97,10 +105,40 @@
   <canvas class="ambient" id="ambient" aria-hidden="true"></canvas>
   <div class="petals" id="petals" aria-hidden="true"></div>
 
-  <!-- Envelope + proposal: shown every time the site opens -->
+  <!-- Top bar: appears once you scroll past the names -->
+  <div class="topbar" id="topbar">
+    <a class="topbar__brand" href="#top">Jemimah <span class="amp">&amp;</span> Joel</a>
+    <span class="topbar__days" id="topbar-days"></span>
+    <button type="button" class="topbar__menu" id="menu-btn" aria-expanded="false" aria-controls="menu">
+      <span class="topbar__menu-icon" aria-hidden="true"><i></i><i></i></span>
+      Menu
+    </button>
+  </div>
+
+  <nav class="menu" id="menu" aria-label="Sections" hidden>
+    <div class="menu__inner">
+      <p class="kicker">Jemimah &amp; Joel</p>
+      <ul class="menu__list">
+        <li><a href="#countdown">Until We Say “I&nbsp;Do”</a></li>
+        <li><a href="#daily">Our Daily Altar</a></li>
+        <li><a href="#letters">Love Letters</a></li>
+        <li><a href="#matrimony">Holy Matrimony</a></li>
+        <li><a href="#pillars">The Three Pillars</a></li>
+        <li><a href="#roles">Our Roles in Christ</a></li>
+        <li><a href="#promises">Our Promises</a></li>
+        <li><a href="#vows">The Vows We Will Speak</a></li>
+        <li><a href="#prepare">Preparing Together</a></li>
+        <li><a href="#verses">Verses for Our Bond</a></li>
+        <li><a href="#prayer">A Prayer for Us</a></li>
+      </ul>
+      <button type="button" class="btn btn--ghost" id="menu-close">Close</button>
+    </div>
+  </nav>
+
+  <!-- Envelope, love note and proposal: shown every time the site opens -->
   <div class="proposal" id="proposal" role="dialog" aria-modal="true" aria-labelledby="envelope-title">
     <div class="envelope-stage" id="envelope-stage">
-      <p class="kicker">The Holy Matrimony Celebration</p>
+      <p class="kicker" id="envelope-kicker">The Holy Matrimony Celebration</p>
       <h2 class="envelope__title" id="envelope-title">A letter for <span class="royal">Jemimah <span class="amp">&amp;</span> Joel</span></h2>
       <div class="envelope" id="envelope">
         <svg class="envelope__back" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true">
@@ -108,7 +146,7 @@
         </svg>
         <div class="envelope__letter" aria-hidden="true">
           <svg class="rings" aria-hidden="true"><use href="#ico-rings"/></svg>
-          <p class="envelope__letter-text">Will you marry me?</p>
+          <p class="envelope__letter-text" id="envelope-letter-text">Will you marry me?</p>
         </div>
         <svg class="envelope__pocket" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true">
           <path d="M0 0L150 110L300 0V200H0Z" fill="url(#flap-grad)"/>
@@ -126,7 +164,23 @@
       <p class="envelope__hint">Tap the seal to open</p>
     </div>
 
-    <div class="proposal__card" id="proposal-card" hidden>
+    <div class="paper-card note-card" id="note-card" hidden>
+      <svg class="corner corner--tl" aria-hidden="true"><use href="#ico-corner"/></svg>
+      <svg class="corner corner--tr" aria-hidden="true"><use href="#ico-corner"/></svg>
+      <svg class="corner corner--bl" aria-hidden="true"><use href="#ico-corner"/></svg>
+      <svg class="corner corner--br" aria-hidden="true"><use href="#ico-corner"/></svg>
+      <p class="kicker">A sealed letter</p>
+      <p class="note-card__to" id="note-to"></p>
+      <p class="note-card__msg" id="note-msg"></p>
+      <p class="note-card__from" id="note-from"></p>
+      <p class="note-card__date" id="note-date"></p>
+      <div class="proposal__actions">
+        <button type="button" class="btn btn--gold" id="note-continue">Continue ♥</button>
+        <button type="button" class="btn btn--ghost" id="note-reply">Write back</button>
+      </div>
+    </div>
+
+    <div class="paper-card proposal__card" id="proposal-card" hidden>
       <svg class="corner corner--tl" aria-hidden="true"><use href="#ico-corner"/></svg>
       <svg class="corner corner--tr" aria-hidden="true"><use href="#ico-corner"/></svg>
       <svg class="corner corner--bl" aria-hidden="true"><use href="#ico-corner"/></svg>
@@ -173,7 +227,7 @@
     <section class="section section--cream" id="countdown" aria-labelledby="countdown-title">
       <div class="container">
         <p class="kicker">Counting down with joy &amp; thanksgiving</p>
-        <h2 class="section__title gold-text" id="countdown-title">Until We Say “I Do”</h2>
+        <h2 class="section__title gold-text" id="countdown-title">Until We Say “I&nbsp;Do”</h2>
         <svg class="divider" aria-hidden="true"><use href="#ico-divider"/></svg>
         <div class="countdown" id="countdown-clock" role="timer" aria-live="off">
           <div class="countdown__unit"><span class="countdown__num" data-unit="days">0</span><span class="countdown__label">Days</span></div>
@@ -183,7 +237,82 @@
         </div>
         <p class="countdown__done" id="countdown-done" hidden></p>
         <p class="countdown__caption" id="countdown-caption">Saturday, 16 October 2032</p>
+
+        <div class="stats" id="stats">
+          <div class="stat"><span class="stat__num" id="stat-months">0</span><span class="stat__label">Months</span></div>
+          <div class="stat"><span class="stat__num" id="stat-weeks">0</span><span class="stat__label">Weeks</span></div>
+          <div class="stat"><span class="stat__num" id="stat-sundays">0</span><span class="stat__label">Sundays of worship together</span></div>
+        </div>
+        <p class="milestone" id="next-milestone"></p>
         <p class="tally" id="yes-tally"></p>
+        <a class="btn btn--ghost calendar-btn" href="wedding.ics" download="jemimah-joel-wedding.ics">Add our day to your calendar</a>
+      </div>
+    </section>
+
+    <section class="section" id="daily" aria-labelledby="daily-title">
+      <div class="container">
+        <p class="kicker" id="today-date">Today</p>
+        <h2 class="section__title gold-text" id="daily-title">Our Daily Altar</h2>
+        <p class="section__lead">A few quiet minutes together with God, every day. Everything here changes at midnight, and you both see the same.</p>
+        <svg class="divider" aria-hidden="true"><use href="#ico-divider"/></svg>
+        <div class="altar">
+          <article class="card altar__verse">
+            <h3 class="card__label">Verse of the day</h3>
+            <blockquote class="verse verse--feature" id="verse-of-day"></blockquote>
+            <a class="text-link" id="verse-link" href="#" target="_blank" rel="noopener">Read it in context ↗</a>
+          </article>
+          <article class="card">
+            <h3 class="card__label">Promise of the day</h3>
+            <p class="altar__text" id="promise-of-day"></p>
+            <p class="altar__ref" id="promise-of-day-ref"></p>
+          </article>
+          <article class="card">
+            <h3 class="card__label">Talk together</h3>
+            <p class="altar__text" id="question-of-day"></p>
+          </article>
+          <article class="card altar__pray">
+            <h3 class="card__label">Pray together</h3>
+            <p class="altar__text" id="prayer-of-day"></p>
+            <button type="button" class="btn btn--gold pray-btn" id="pray-btn">We prayed together today</button>
+            <p class="altar__ref" id="pray-tally"></p>
+          </article>
+          <article class="card">
+            <h3 class="card__label">Read together</h3>
+            <p class="altar__text">Today’s chapter of wisdom: <strong id="proverb-ref">Proverbs 1</strong></p>
+            <a class="text-link" id="proverb-link" href="#" target="_blank" rel="noopener">Open in the NKJV ↗</a>
+            <p class="altar__ref">One chapter of Proverbs for each day of the month</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--cream" id="letters" aria-labelledby="letters-title">
+      <div class="container">
+        <p class="kicker">Sealed with love</p>
+        <h2 class="section__title gold-text" id="letters-title">Love Letters</h2>
+        <p class="section__lead">Write a few words, seal them, and send the link. Your letter opens inside the wax-sealed envelope on their phone.</p>
+        <svg class="divider" aria-hidden="true"><use href="#ico-divider"/></svg>
+        <div class="letters">
+          <form class="card compose" id="compose">
+            <fieldset class="compose__from">
+              <legend class="card__label">From</legend>
+              <label class="chip"><input type="radio" name="from" value="Jemimah"> Jemimah</label>
+              <label class="chip"><input type="radio" name="from" value="Joel"> Joel</label>
+            </fieldset>
+            <label class="card__label" for="note-text" id="note-label">Your letter</label>
+            <textarea id="note-text" maxlength="800" rows="7" placeholder="My love, today I thank God for you because…" required></textarea>
+            <div class="compose__foot">
+              <span class="compose__count" id="note-count">0 / 800</span>
+              <button type="submit" class="btn btn--gold">Seal &amp; send</button>
+            </div>
+            <p class="compose__status" id="compose-status" role="status" aria-live="polite"></p>
+          </form>
+          <div class="kept">
+            <h3 class="card__label">Letters kept on this phone</h3>
+            <div class="kept__list" id="kept-list"></div>
+            <p class="kept__empty" id="kept-empty">Letters you send and receive will be kept here.</p>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -211,27 +340,7 @@
       </div>
     </section>
 
-    <section class="section section--cream" id="today" aria-labelledby="today-title">
-      <div class="container">
-        <p class="kicker" id="today-date">Today</p>
-        <h2 class="section__title gold-text" id="today-title">Today’s Word for Us</h2>
-        <svg class="divider" aria-hidden="true"><use href="#ico-divider"/></svg>
-        <div class="today">
-          <article class="card card--verse">
-            <h3 class="card__label">Verse of the day</h3>
-            <blockquote class="verse verse--feature" id="verse-of-day"></blockquote>
-          </article>
-          <article class="card card--promise">
-            <h3 class="card__label">Promise of the day</h3>
-            <p class="promise-of-day" id="promise-of-day"></p>
-            <p class="promise-of-day__ref" id="promise-of-day-ref"></p>
-          </article>
-        </div>
-        <p class="note">Read it aloud to each other today. A new verse and promise arrive every midnight.</p>
-      </div>
-    </section>
-
-    <section class="section" id="pillars" aria-labelledby="pillars-title">
+    <section class="section section--cream" id="pillars" aria-labelledby="pillars-title">
       <div class="container">
         <p class="kicker">What our marriage stands on</p>
         <h2 class="section__title gold-text" id="pillars-title">The Three Pillars of Marriage</h2>
@@ -240,7 +349,7 @@
       </div>
     </section>
 
-    <section class="section section--cream" id="roles" aria-labelledby="roles-title">
+    <section class="section" id="roles" aria-labelledby="roles-title">
       <div class="container">
         <p class="kicker">Ephesians 5 · 1 Peter 3 · Proverbs 31</p>
         <h2 class="section__title gold-text" id="roles-title">Our Roles in Christ</h2>
@@ -249,7 +358,7 @@
       </div>
     </section>
 
-    <section class="section" id="promises" aria-labelledby="promises-title">
+    <section class="section section--cream" id="promises" aria-labelledby="promises-title">
       <div class="container">
         <p class="kicker">Before God and each other</p>
         <h2 class="section__title gold-text" id="promises-title">Our Promises</h2>
@@ -258,13 +367,83 @@
       </div>
     </section>
 
-    <section class="section section--cream" id="verses" aria-labelledby="verses-title">
+    <section class="section" id="vows" aria-labelledby="vows-title">
+      <div class="container">
+        <p class="kicker">To be spoken on 16 October 2032</p>
+        <h2 class="section__title gold-text" id="vows-title">The Vows We Will Speak</h2>
+        <svg class="divider" aria-hidden="true"><use href="#ico-divider"/></svg>
+        <div class="grid grid--2 vows">
+          <article class="card vow">
+            <p class="card__label">Joel to Jemimah</p>
+            <p class="vow__text">I, <span class="royal">Joel Raj Vemuri</span>, take you, <span class="royal">Jemimah Nirmala Chinta</span>, to be my wedded wife, to have and to hold from this day forward, for better, for worse, for richer, for poorer, in sickness and in health, to love and to cherish, till death us do part, according to God’s holy ordinance; and to this I pledge you my faithfulness.</p>
+          </article>
+          <article class="card vow">
+            <p class="card__label">Jemimah to Joel</p>
+            <p class="vow__text">I, <span class="royal">Jemimah Nirmala Chinta</span>, take you, <span class="royal">Joel Raj Vemuri</span>, to be my wedded husband, to have and to hold from this day forward, for better, for worse, for richer, for poorer, in sickness and in health, to love and to cherish, till death us do part, according to God’s holy ordinance; and to this I pledge you my faithfulness.</p>
+          </article>
+        </div>
+        <article class="card vow vow--rings">
+          <svg class="rings" aria-hidden="true"><use href="#ico-rings"/></svg>
+          <p class="card__label">With the rings</p>
+          <p class="vow__text">With this ring I wed you; with my body I honor you; and with all my worldly goods I endow you: in the name of the Father, and of the Son, and of the Holy Spirit. Amen.</p>
+        </article>
+        <p class="note">Adapted from the traditional vows of the Book of Common Prayer. Read them aloud to each other now, so they are the words of your hearts long before the day you speak them.</p>
+      </div>
+    </section>
+
+    <section class="section section--cream" id="prepare" aria-labelledby="prepare-title">
+      <div class="container">
+        <p class="kicker">While we wait</p>
+        <h2 class="section__title gold-text" id="prepare-title">Preparing Together</h2>
+        <p class="section__lead">Waiting is never wasted. These are the years to prepare our hearts and our home.</p>
+        <svg class="divider" aria-hidden="true"><use href="#ico-divider"/></svg>
+        <div class="grid grid--3 quotes wait-verses">
+          <figure class="card quote">
+            <blockquote class="verse verse--feature"><p>Wait on the LORD; Be of good courage, And He shall strengthen your heart; Wait, I say, on the LORD!</p><cite>Psalm 27:14</cite></blockquote>
+          </figure>
+          <figure class="card quote">
+            <blockquote class="verse verse--feature"><p>He has made everything beautiful in its time.</p><cite>Ecclesiastes 3:11</cite></blockquote>
+          </figure>
+          <figure class="card quote">
+            <blockquote class="verse verse--feature"><p>Though it tarries, wait for it; Because it will surely come, It will not tarry.</p><cite>Habakkuk 2:3</cite></blockquote>
+          </figure>
+        </div>
+        <div class="prep-progress" aria-live="polite">
+          <div class="prep-progress__bar"><span id="prep-bar"></span></div>
+          <p class="prep-progress__text" id="prep-count"></p>
+        </div>
+        <div class="grid grid--2" id="prep-list"></div>
+        <p class="note note--small">Ticks are saved on this phone.</p>
+      </div>
+    </section>
+
+    <section class="section" id="verses" aria-labelledby="verses-title">
       <div class="container">
         <p class="kicker">Hidden in our hearts</p>
         <h2 class="section__title gold-text" id="verses-title">Verses for Our Bond</h2>
         <svg class="divider" aria-hidden="true"><use href="#ico-divider"/></svg>
         <div class="tabs" role="tablist" aria-label="Verse themes" id="verse-tabs"></div>
         <div id="verse-panels"></div>
+      </div>
+    </section>
+
+    <section class="section section--cream prayer" id="prayer" aria-labelledby="prayer-title">
+      <div class="container">
+        <p class="kicker">Pray it together</p>
+        <h2 class="section__title gold-text" id="prayer-title">A Prayer for Us</h2>
+        <svg class="divider" aria-hidden="true"><use href="#ico-divider"/></svg>
+        <div class="paper-card prayer__card">
+          <svg class="corner corner--tl" aria-hidden="true"><use href="#ico-corner"/></svg>
+          <svg class="corner corner--tr" aria-hidden="true"><use href="#ico-corner"/></svg>
+          <svg class="corner corner--bl" aria-hidden="true"><use href="#ico-corner"/></svg>
+          <svg class="corner corner--br" aria-hidden="true"><use href="#ico-corner"/></svg>
+          <p>Heavenly Father, thank You for bringing us together and for every step of our story.</p>
+          <p>Be the center of our love, the third strand of our cord. Teach us to love as Christ loves, to serve as He served, and to forgive as we have been forgiven.</p>
+          <p>Keep our hearts pure and faithful while we wait for the day You have prepared. Bless our families, guide our steps, and make our home a place where Your name is honored.</p>
+          <p>Prepare us for the children You may give us, and help us raise them to know and love You.</p>
+          <p>Until the day we say “I do,” and every day after, draw us closer to You and closer to each other.</p>
+          <p class="prayer__amen">In Jesus’ name, Amen.</p>
+        </div>
       </div>
     </section>
   </main>
@@ -279,14 +458,20 @@
       <button type="button" class="btn btn--ghost" id="replay-btn">Replay envelope opening</button>
     </div>
     <p class="toast" id="toast" role="status" aria-live="polite"></p>
+    <p class="footer__hint">Tip: add this page to your home screen so it opens like an app every day.</p>
     <p class="footer__legal">Scripture taken from the New King James Version®. Copyright © 1982 by Thomas Nelson. Used by permission. All rights reserved.</p>
   </footer>
 
   <!-- Our song -->
-  <button type="button" class="music" id="music-btn" aria-label="Play our song" aria-pressed="false">
-    <svg class="music__icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 18.5a3 3 0 1 1-2-2.83V5.5l11-2.5v12.5a3 3 0 1 1-2-2.83V7.6l-7 1.6v9.3z"/></svg>
-    <span class="music__bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-    <span class="music__hint" aria-hidden="true">Tap for our song</span>
+  <button type="button" class="music is-expanded" id="music-btn" aria-label="Play our song" aria-pressed="false">
+    <span class="music__disc" aria-hidden="true">
+      <svg class="music__icon" viewBox="0 0 24 24"><path fill="currentColor" d="M9 18.5a3 3 0 1 1-2-2.83V5.5l11-2.5v12.5a3 3 0 1 1-2-2.83V7.6l-7 1.6v9.3z"/></svg>
+      <span class="music__bars"><i></i><i></i><i></i><i></i></span>
+    </span>
+    <span class="music__label" aria-hidden="true">
+      <span class="music__title" id="music-title">Tap for our song</span>
+      <span class="music__sub" id="music-sub">Goodness of God</span>
+    </span>
   </button>
   <a class="music-link" id="music-link" href="https://www.youtube.com/watch?v=SuPCTBmISzQ&amp;t=47s" target="_blank" rel="noopener" hidden>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 18.5a3 3 0 1 1-2-2.83V5.5l11-2.5v12.5a3 3 0 1 1-2-2.83V7.6l-7 1.6v9.3z"/></svg>
