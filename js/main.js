@@ -7,6 +7,8 @@
   var ME_KEY = "jj-me"; // who is holding this phone; stays on the phone
   var S = window.JJStore; // everything we save, and its sync (js/store.js)
   var NOTE_MAX = 800;
+  // Links we send always point at the live site, never at wherever this copy is open.
+  var SITE = "https://ustogetherwithchrist-us.github.io/commitment/";
 
   var SONG = {
     title: "Goodness of God",
@@ -825,24 +827,32 @@
   function toB64Url(str) { return bytesToB64Url(new TextEncoder().encode(str)); }
   function fromB64Url(code) { return new TextDecoder().decode(b64UrlToBytes(code)); }
 
-  // Share a link through the phone's share sheet, or copy it where sharing isn't available.
-  function shareLink(opts) {
-    function copy() {
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(opts.url).then(
-          function () { opts.done(opts.copied); },
-          function () { opts.status.textContent = opts.url; });
-      } else {
-        opts.status.textContent = opts.url;
-      }
+  // Copy text from inside a tap, with older fallbacks. Calls back with true or false.
+  function copyText(text, field, cb) {
+    if (field) { field.focus({ preventScroll: true }); field.select(); field.setSelectionRange(0, text.length); }
+    function legacy() {
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      cb(ok);
     }
-    if (navigator.share) {
-      navigator.share({ title: opts.title, text: opts.text, url: opts.url })
-        .then(function () { opts.done(opts.shared); }, function (err) {
-          if (!err || err.name !== "AbortError") copy();
-        });
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { cb(true); }, legacy);
     } else {
-      copy();
+      legacy();
+    }
+  }
+
+  // Share through the phone's share sheet, or copy where there is none.
+  // The link always travels inside the text: many apps drop a separate url.
+  function shareLink(opts) {
+    var message = opts.text + "\n" + opts.url;
+    if (navigator.share) {
+      navigator.share({ text: message }).then(function () { opts.done(opts.shared); }, function (err) {
+        if (err && err.name === "AbortError") return;
+        opts.done("The share sheet didn’t open. Please try again.");
+      });
+    } else {
+      copyText(opts.url, null, function (ok) { opts.done(ok ? opts.copied : opts.url); });
     }
   }
 
@@ -892,6 +902,23 @@
       item.appendChild(el("p", "letter__meta",
         (kind === "sent" ? "Sent · " : kind === "received" ? "Received · " : "") + "From " + l.from + " to " + l.to + (l.date ? " · " + fmtKey(l.date) : "")));
       item.appendChild(el("p", "letter__msg", l.msg));
+      var actions = el("div", "letter__actions");
+      var openBtn = el("button", "text-link", "Open ✉");
+      openBtn.type = "button";
+      openBtn.addEventListener("click", function () {
+        proposal.openLetter(l, { reply: kind !== "sent" });
+      });
+      actions.appendChild(openBtn);
+      if (kind === "sent") {
+        var again = el("button", "text-link", "Send again");
+        again.type = "button";
+        again.addEventListener("click", function () {
+          showSealed(l);
+          $("#letters").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+        });
+        actions.appendChild(again);
+      }
+      item.appendChild(actions);
       var remove = el("button", "letter__remove", "×");
       remove.type = "button";
       remove.setAttribute("aria-label", "Remove this letter from this phone");
@@ -910,16 +937,57 @@
     });
   }
 
+  function letterLink(l) {
+    return SITE + "#note=" + toB64Url(JSON.stringify({ f: l.from, m: l.msg, d: l.date || null }));
+  }
+
+  function letterMessage(l, url) {
+    return "💌 " + l.to + ", I sealed a letter for you.\nTap to break the seal:\n" + url + "\n— " + l.from;
+  }
+
+  var KIND_HINT = {
+    whisper: "Opens as a whisper ✦ written in ink, word by word",
+    note: "Opens as a love note ✦ each word blooms in gold",
+    letter: "Opens as a letter ✦ unfolded paragraph by paragraph"
+  };
+
+  var showSealed = function () {};
+
   function initLetters() {
     var form = $("#compose");
     var text = $("#note-text");
     var count = $("#note-count");
     var status = $("#compose-status");
+    var kindLine = $("#note-kind");
+    var sealBtn = $("#note-seal");
+    var panel = $("#sealed");
+    var panelStatus = $("#sealed-status");
+    var linkField = $("#sealed-link");
     var me = readStore(ME_KEY);
+    var current = null; // the letter in the send panel
 
     function setFrom(name) {
       form.querySelectorAll('input[name="from"]').forEach(function (r) { r.checked = r.value === name; });
       $("#note-label").textContent = name ? "Your letter to " + otherOf(name) : "Your letter";
+    }
+
+    function draft() {
+      var chosen = form.querySelector('input[name="from"]:checked');
+      var msg = text.value.replace(/\r\n?/g, "\n").trim().slice(0, NOTE_MAX);
+      if (!chosen) { status.textContent = "Choose who the letter is from ♥"; return null; }
+      if (!msg) { status.textContent = "Write a few words first ♥"; text.focus(); return null; }
+      status.textContent = "";
+      return { from: chosen.value, to: otherOf(chosen.value), msg: msg, date: dateKey(new Date()) };
+    }
+
+    var kindTimer = null;
+    function update() {
+      count.textContent = text.value.length + " / " + NOTE_MAX;
+      clearTimeout(kindTimer);
+      kindTimer = setTimeout(function () {
+        var msg = text.value.trim();
+        kindLine.textContent = msg ? KIND_HINT[letterKind(msg).kind] : "";
+      }, 120);
     }
 
     setFrom(me === "Jemimah" || me === "Joel" ? me : null);
@@ -928,36 +996,99 @@
       writeStore(ME_KEY, e.target.value);
       setFrom(e.target.value);
     });
-    text.addEventListener("input", function () { count.textContent = text.value.length + " / " + NOTE_MAX; });
+    text.addEventListener("input", update);
+
+    // Gentle ways to begin: they only add words, they never send anything.
+    form.querySelectorAll(".starter").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var add = b.textContent;
+        var start = text.selectionStart || 0;
+        var end = text.selectionEnd || 0;
+        var before = text.value.slice(0, start);
+        if (before && !/\s$/.test(before)) add = (/\n$/.test(before) ? "" : "\n") + add;
+        add += " ";
+        if (text.value.length - (end - start) + add.length > NOTE_MAX) return;
+        text.focus();
+        text.setRangeText(add, start, end, "end");
+        update();
+      });
+    });
+
+    $("#note-preview").addEventListener("click", function () {
+      var l = draft();
+      if (l) proposal.openLetter(l, { sender: true });
+    });
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      var chosen = form.querySelector('input[name="from"]:checked');
-      var msg = text.value.trim().slice(0, NOTE_MAX);
-      if (!chosen) { status.textContent = "Choose who the letter is from ♥"; return; }
-      if (!msg) { status.textContent = "Write a few words first ♥"; text.focus(); return; }
-
-      var from = chosen.value;
-      var to = otherOf(from);
-      var date = dateKey(new Date());
-      var code = toB64Url(JSON.stringify({ f: from, m: msg, d: date }));
-      var url = location.origin + location.pathname + "#note=" + code;
-      keepLetter({ from: from, to: to, msg: msg, date: date });
+      if (sealBtn.disabled) return;
+      var l = draft();
+      if (!l) return;
+      var url = letterLink(l);
+      // Make sure the link opens to exactly this letter before anything is sent.
+      var back = decodeNote(url.split("#note=")[1]);
+      if (!back || back.msg !== l.msg) { status.textContent = "Something went wrong sealing your letter. Please try again."; return; }
+      sealBtn.disabled = true;
+      sealBtn.textContent = "Sealing…";
+      keepLetter(l);
       renderKept();
+      form.classList.add("is-sealing");
+      setTimeout(function () {
+        form.classList.remove("is-sealing");
+        sealBtn.disabled = false;
+        sealBtn.textContent = "Seal it";
+        showSealed(l);
+      }, reduceMotion ? 0 : 900);
+    });
 
-      shareLink({
-        url: url,
-        title: "A sealed letter for " + to,
-        text: "I sealed a letter for you, " + to + " 💌",
-        status: status,
-        shared: "Sealed and sent to " + to + " ♥",
-        copied: "Sealed! The link is copied. Paste it to " + to + " ♥",
-        done: function (note) {
-          status.textContent = note;
-          text.value = "";
-          count.textContent = "0 / " + NOTE_MAX;
-        }
+    showSealed = function (l) {
+      current = l;
+      var url = letterLink(l);
+      var message = letterMessage(l, url);
+      $("#sealed-to").textContent = l.to;
+      $("#sealed-kicker").textContent = l.date ? "Sealed · " + fmtKey(l.date) : "Sealed with love";
+      $("#sealed-whatsapp").href = "https://wa.me/?text=" + encodeURIComponent(message);
+      $("#sealed-share").hidden = !navigator.share;
+      linkField.value = url;
+      $("#sealed-long").hidden = url.length <= 2000;
+      panelStatus.textContent = "";
+      form.hidden = true;
+      panel.hidden = false;
+      panel.classList.remove("is-new");
+      void panel.offsetWidth;
+      panel.classList.add("is-new");
+      panel.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
+      $("#sealed-whatsapp").focus({ preventScroll: true });
+    };
+
+    $("#sealed-whatsapp").addEventListener("click", function () {
+      panelStatus.textContent = "WhatsApp is opening. Choose " + current.to + ", then tap Send ✓";
+    });
+    $("#sealed-share").addEventListener("click", function () {
+      var message = letterMessage(current, letterLink(current));
+      navigator.share({ text: message }).then(function () {
+        panelStatus.textContent = "Shared. Make sure you tapped Send in the chat ✓";
+      }, function (err) {
+        if (err && err.name === "AbortError") return;
+        panelStatus.textContent = "The share sheet didn’t open. Use WhatsApp or Copy link instead.";
       });
+    });
+    $("#sealed-copy").addEventListener("click", function () {
+      copyText(linkField.value, linkField, function (ok) {
+        panelStatus.textContent = ok
+          ? "Link copied ✓ Paste it in your chat with " + current.to + "."
+          : "Press and hold the link above, then tap Copy.";
+      });
+    });
+    $("#sealed-preview").addEventListener("click", function () {
+      proposal.openLetter(current, { sender: true });
+    });
+    $("#sealed-new").addEventListener("click", function () {
+      text.value = "";
+      update();
+      panel.hidden = true;
+      form.hidden = false;
+      text.focus();
     });
 
     renderKept();
@@ -1241,7 +1372,7 @@
       var status = $("#plan-status");
       var where = other ? other + "’s phone" : "the other phone";
       shareLink({
-        url: location.origin + location.pathname + "#plan=" + planCode(),
+        url: SITE + "#plan=" + planCode(),
         title: "Our Bible plan",
         text: "Our Bible plan progress ♥ Open it to keep our readings in step.",
         status: status,
@@ -1252,6 +1383,151 @@
     });
 
     renderPlan();
+  }
+
+  /* ---------- Opening a letter: the reveal follows the letter's length ----------
+   * whisper (a line)  → script ink, written word by word
+   * note (a few lines) → each word blooms from gold to ink
+   * letter (longer)    → unfolded paragraph by paragraph, with a gold drop cap
+   * Every reveal has a time cap, a tap shows everything, and reduced motion shows it at once.
+   */
+
+  var graphemeSeg = window.Intl && Intl.Segmenter ? new Intl.Segmenter(undefined, { granularity: "grapheme" }) : null;
+  function graphemes(str) {
+    if (graphemeSeg) { var n = 0; for (var _ of graphemeSeg.segment(str)) n++; return n; } // eslint-disable-line no-unused-vars
+    return Array.from(str).length;
+  }
+
+  var EMOJI_ONLY = (function () {
+    try { return new RegExp("^[\\p{Extended_Pictographic}\\p{Emoji_Component}\\u200D\\uFE0F\\s]+$", "u"); } catch (e) { return null; }
+  })();
+
+  function letterKind(msg) {
+    msg = msg.replace(/\r\n?/g, "\n").trim();
+    var g = graphemes(msg);
+    var lines = msg.split("\n").length;
+    var emoji = !!(EMOJI_ONLY && EMOJI_ONLY.test(msg) && g <= 4);
+    if (g <= 60 && lines === 1) return { kind: "whisper", emoji: emoji };
+    if (g <= 280 && lines <= 8) return { kind: "note", emoji: false };
+    return { kind: "letter", emoji: false };
+  }
+
+  var CLOSING = { whisper: "Ever yours,", note: "With all my love,", letter: "Yours in Christ, today and forever," };
+
+  // Did the writer already begin with a greeting of their own?
+  function hasGreeting(msg) {
+    return /^\s*(my\s+)?(dear|dearest|darling|beloved|sweetheart|love|jemimah|joel)\b/i.test(msg.split("\n")[0]);
+  }
+
+  function splitParagraphs(msg) {
+    var parts = msg.split(/\n\s*\n/);
+    if (parts.length < 2) parts = msg.split("\n");
+    if (parts.length < 2) {
+      var sentences = [];
+      if (window.Intl && Intl.Segmenter) {
+        for (var seg of new Intl.Segmenter(undefined, { granularity: "sentence" }).segment(msg)) sentences.push(seg.segment);
+      } else {
+        sentences = msg.match(/[^.!?।॥]+[.!?।॥]*\s*/g) || [msg];
+      }
+      var groups = Math.min(5, Math.max(1, Math.ceil(sentences.length / 2)));
+      var per = Math.ceil(sentences.length / groups);
+      parts = [];
+      for (var i = 0; i < sentences.length; i += per) parts.push(sentences.slice(i, i + per).join("").trim());
+    }
+    return parts.map(function (x) { return x.trim(); }).filter(Boolean);
+  }
+
+  var letterPlay = { timers: [], done: null };
+
+  // Build the letter on the card and schedule its reveal. Returns nothing; finishLetter() ends it early.
+  function playLetter(card, note) {
+    letterPlay.timers.forEach(clearTimeout);
+    letterPlay.timers = [];
+    var msg = note.msg.replace(/\r\n?/g, "\n").trim();
+    var k = letterKind(msg);
+    var greet = !hasGreeting(msg);
+    var salutation = greet ? "My dearest " + note.to + "," : "";
+    // If the writer opened with their own short greeting line, it becomes the script greeting.
+    var lines = msg.split("\n");
+    if (!greet && lines.length > 1 && graphemes(lines[0].trim()) <= 40) {
+      salutation = lines[0].trim();
+      msg = lines.slice(1).join("\n").trim();
+      k = letterKind(msg).kind === "letter" ? k : letterKind(msg);
+    }
+    var body = $("#note-body");
+    body.textContent = "";
+    card.className = "paper-card note-card note-card--" + k.kind + (k.emoji ? " is-heartbeat" : "") + " is-revealing";
+
+    $("#note-to").textContent = salutation;
+    $("#note-to").hidden = !salutation;
+    $("#note-closing").textContent = CLOSING[k.kind];
+    $("#note-from").textContent = note.from;
+    $("#note-date").textContent = note.date ? fmtKey(note.date) : "";
+    $("#note-sr").textContent = (salutation ? salutation + " " : "") + msg + " " + CLOSING[k.kind] + " " + note.from;
+
+    var start = salutation ? 1250 : 700; // after the paper settles and the greeting is written
+    var end = start;
+
+    if (k.kind === "letter") {
+      var paras = splitParagraphs(msg);
+      var stagger = paras.length > 1 ? Math.min(320, 2400 / (paras.length - 1)) : 0;
+      paras.forEach(function (text, i) {
+        var para = el("p", "ink-p");
+        var first = i === 0 && graphemeSeg ? graphemeSeg.segment(text)[Symbol.iterator]().next().value : null;
+        if (first && /^[A-Za-z]$/.test(first.segment)) {
+          para.appendChild(el("span", "dropcap", first.segment));
+          para.append(text.slice(first.segment.length));
+        } else {
+          para.textContent = text;
+        }
+        para.style.setProperty("--d", Math.round(start + i * stagger) + "ms");
+        body.appendChild(para);
+      });
+      end = start + (paras.length - 1) * stagger + 800;
+    } else {
+      var tokens = msg.split(/(\s+)/);
+      var words = tokens.filter(function (t) { return t && !/^\s+$/.test(t); });
+      var t = 0;
+      var plan = [];
+      words.forEach(function (w) {
+        var dur = k.kind === "whisper" ? Math.max(260, Math.min(1100, 85 * graphemes(w))) : 600;
+        plan.push({ d: t, dur: dur });
+        var gap = k.kind === "whisper" ? dur * 0.75 : Math.min(80, 2600 / Math.max(1, words.length - 1));
+        if (/[.!?।॥…]["'”’)]*$/.test(w)) gap += k.kind === "whisper" ? 140 : 220;
+        else if (/[,;:]["'”’)]*$/.test(w)) gap += 90;
+        t += gap;
+      });
+      var last = plan.length ? plan[plan.length - 1] : { d: 0, dur: 0 };
+      var total = last.d + last.dur;
+      var cap = 3000;
+      var scale = total > cap ? (cap - last.dur) / Math.max(1, last.d) : 1;
+      var wi = 0;
+      tokens.forEach(function (tok) {
+        if (!tok) return;
+        if (/^\s+$/.test(tok)) { body.append(tok); return; }
+        var p = plan[wi++];
+        var span = el("span", "ink", tok);
+        span.style.setProperty("--d", Math.round(start + p.d * scale) + "ms");
+        span.style.setProperty("--dur", p.dur + "ms");
+        body.appendChild(span);
+      });
+      end = start + Math.min(total, cap);
+    }
+
+    // The signing: closing line, name, date, a pressed heart, a quiet verse, then the buttons.
+    var beats = { "--t-close": end + 200, "--t-sign": end + 600, "--t-date": end + 1700, "--t-stamp": end + 1900, "--t-verse": end + 2200, "--t-actions": end + 2500 };
+    Object.keys(beats).forEach(function (key) { card.style.setProperty(key, beats[key] + "ms"); });
+    letterPlay.timers.push(setTimeout(function () { finishLetter(card, true); }, end + 3200));
+  }
+
+  // Show the whole letter at once (a tap, a key, the end of the reveal, or reduced motion).
+  function finishLetter(card, natural) {
+    if (!card.classList.contains("is-revealing")) return;
+    letterPlay.timers.forEach(clearTimeout);
+    letterPlay.timers = [];
+    card.classList.remove("is-revealing");
+    if (!natural) card.classList.add("is-shown");
+    if (letterPlay.done) letterPlay.done();
   }
 
   /* ---------- Envelope, letter and proposal ---------- */
@@ -1270,6 +1546,7 @@
     var timers = [];
     var pending = note;
     var replyAs = null;
+    var mode = { preview: false, sender: false, reply: true }; // preview: a letter opened on its own, no daily proposal
 
     function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
 
@@ -1277,7 +1554,7 @@
       var title = $("#envelope-title");
       title.textContent = "";
       if (pending) {
-        $("#envelope-kicker").textContent = "Sealed with love";
+        $("#envelope-kicker").textContent = mode.sender ? "Preview · how it will open" : "Sealed with love";
         title.append("A letter from ");
         title.appendChild(el("span", "royal", pending.from));
         title.append(" for ");
@@ -1320,12 +1597,14 @@
     }
 
     function showNote() {
-      $("#note-to").textContent = "My dearest " + pending.to + ",";
-      $("#note-msg").textContent = pending.msg;
-      $("#note-from").textContent = "— " + pending.from;
-      $("#note-date").textContent = pending.date ? fmtKey(pending.date) : "";
+      $("#note-continue").textContent = mode.preview ? (mode.sender ? "Close preview" : "Close ♥") : "Continue ♥";
+      $("#note-reply").hidden = mode.sender || !mode.reply;
       noteCard.hidden = false;
-      $("#note-continue").focus({ preventScroll: true });
+      noteCard.scrollTop = 0;
+      letterPlay.done = function () { $("#note-continue").focus({ preventScroll: true }); };
+      playLetter(noteCard, pending);
+      if (reduceMotion) finishLetter(noteCard);
+      else noteCard.focus({ preventScroll: true });
     }
 
     function openEnvelope() {
@@ -1346,6 +1625,7 @@
       overlay.classList.add("is-closing");
       document.body.classList.remove("is-locked");
       pending = null;
+      mode = { preview: false, sender: false, reply: true };
       later(function () {
         overlay.hidden = true;
         if (replyAs) {
@@ -1364,10 +1644,25 @@
     }
 
     seal.addEventListener("click", openEnvelope);
-    $("#note-continue").addEventListener("click", showProposal);
+    $("#note-continue").addEventListener("click", function () {
+      if (mode.preview) close();
+      else showProposal();
+    });
     $("#note-reply").addEventListener("click", function () {
       replyAs = pending.to;
-      showProposal();
+      if (mode.preview) close();
+      else showProposal();
+    });
+
+    // A tap anywhere on the letter (or Space / Enter / Esc) shows it all at once.
+    noteCard.setAttribute("tabindex", "-1");
+    noteCard.addEventListener("click", function (e) {
+      if (e.target.closest("button, a")) return;
+      finishLetter(noteCard);
+    });
+    noteCard.addEventListener("keydown", function (e) {
+      if (!noteCard.classList.contains("is-revealing")) return;
+      if (e.key === " " || e.key === "Enter" || e.key === "Escape") { e.preventDefault(); finishLetter(noteCard); }
     });
 
     buttons.forEach(function (btn) {
@@ -1391,7 +1686,7 @@
     overlay.addEventListener("keydown", function (e) {
       if (e.key !== "Tab") return;
       var focusables = !card.hidden ? Array.prototype.slice.call(buttons)
-        : !noteCard.hidden ? [$("#note-continue"), $("#note-reply")] : [seal];
+        : !noteCard.hidden ? [$("#note-continue"), $("#note-reply")].filter(function (b) { return !b.hidden; }) : [seal];
       var first = focusables[0];
       var last = focusables[focusables.length - 1];
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
@@ -1400,6 +1695,16 @@
 
     proposal.replay = function () {
       window.scrollTo({ top: 0 });
+      pending = null;
+      mode = { preview: false, sender: false, reply: true };
+      reset();
+    };
+
+    // Open one letter in the sealed envelope on its own (a preview, a kept letter, a link).
+    proposal.openLetter = function (letter, opts) {
+      opts = opts || {};
+      pending = { from: letter.from, to: letter.to, msg: letter.msg, date: letter.date };
+      mode = { preview: true, sender: !!opts.sender, reply: opts.reply !== false };
       reset();
     };
 
@@ -1530,14 +1835,13 @@
     }
 
     $("#share-btn").addEventListener("click", function () {
-      var data = { title: document.title, text: "Jemimah & Joel · United in Christ, bound in eternal love", url: location.href.split("#")[0] };
-      if (navigator.share) {
-        navigator.share(data).catch(noop);
-      } else if (navigator.clipboard) {
-        navigator.clipboard.writeText(data.url).then(function () { say("Link copied ♥"); }, function () { say(data.url); });
-      } else {
-        say(data.url);
-      }
+      shareLink({
+        url: SITE,
+        text: "Jemimah & Joel · United in Christ, bound in eternal love",
+        shared: "Shared ♥",
+        copied: "Link copied ♥",
+        done: say
+      });
     });
 
     $("#replay-btn").addEventListener("click", function () { proposal.replay(); });
@@ -1764,4 +2068,21 @@
   });
   initFooter();
   initSync();
+
+  // A letter or progress link opened while the page is already open (e.g. the home-screen app).
+  window.addEventListener("hashchange", function () {
+    var letter = readNoteFromLink();
+    if (letter) {
+      renderKept();
+      proposal.openLetter(letter, { reply: true });
+      return;
+    }
+    var added = readPlanFromLink();
+    if (added !== null) {
+      loadPlan();
+      renderPlan();
+      $("#plan-status").textContent = added ? "Added " + plural(added, "reading") + " from the other phone ♥" : "Both phones are already in step ♥";
+      $("#plan").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+    }
+  });
 })();

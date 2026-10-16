@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#FBF7EF">
   <meta property="og:title" content="Jemimah &amp; Joel · Holy Matrimony">
   <meta property="og:description" content="United in Christ · Bound in Eternal Love · 16 October 2032">
-  <meta property="og:image" content="images/couple.png">
+  <meta property="og:image" content="https://ustogetherwithchrist-us.github.io/commitment/images/couple.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -171,12 +171,17 @@
       <svg class="corner corner--tr" aria-hidden="true"><use href="#ico-corner"/></svg>
       <svg class="corner corner--bl" aria-hidden="true"><use href="#ico-corner"/></svg>
       <svg class="corner corner--br" aria-hidden="true"><use href="#ico-corner"/></svg>
-      <p class="kicker">A sealed letter</p>
-      <p class="note-card__to" id="note-to"></p>
-      <p class="note-card__msg" id="note-msg"></p>
-      <p class="note-card__from" id="note-from"></p>
+      <p class="kicker note-card__kicker">A sealed letter</p>
+      <p class="note-card__to" id="note-to" aria-hidden="true"></p>
+      <div class="note-card__body" id="note-body" aria-hidden="true"></div>
+      <p class="visually-hidden" id="note-sr"></p>
+      <p class="note-card__closing" id="note-closing" aria-hidden="true"></p>
+      <p class="note-card__from" id="note-from" aria-hidden="true"></p>
       <p class="note-card__date" id="note-date"></p>
-      <div class="proposal__actions">
+      <svg class="note-card__stamp" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M20 29s-8-4.8-8-10.2A4.4 4.4 0 0 1 20 16a4.4 4.4 0 0 1 8 2.8C28 24.2 20 29 20 29z" fill="currentColor"/></svg>
+      <p class="note-card__verse" id="note-verse">“I am my beloved’s, And my beloved is mine.” <cite>Song of Solomon 6:3</cite></p>
+      <p class="note-card__skip" id="note-skip" aria-hidden="true">Tap to read it all</p>
+      <div class="proposal__actions note-card__actions">
         <button type="button" class="btn btn--gold" id="note-continue">Continue ♥</button>
         <button type="button" class="btn btn--ghost" id="note-reply">Write back</button>
       </div>
@@ -334,6 +339,7 @@
         <p class="section__lead">Write a few words, seal them, and send the link. Your letter opens inside the wax-sealed envelope on their phone.</p>
         <svg class="divider" aria-hidden="true"><use href="#ico-divider"/></svg>
         <div class="letters">
+          <div class="compose-wrap">
           <form class="card compose" id="compose">
             <fieldset class="compose__from">
               <legend class="card__label">From</legend>
@@ -341,13 +347,45 @@
               <label class="chip"><input type="radio" name="from" value="Joel"> Joel</label>
             </fieldset>
             <label class="card__label" for="note-text" id="note-label">Your letter</label>
+            <div class="starters" role="group" aria-label="Ways to begin">
+              <button type="button" class="starter">Today I thank God for you because…</button>
+              <button type="button" class="starter">I’m praying for…</button>
+              <button type="button" class="starter">I loved it when you…</button>
+              <button type="button" class="starter">A verse for you:</button>
+            </div>
             <textarea id="note-text" maxlength="800" rows="7" placeholder="My love, today I thank God for you because…" required></textarea>
+            <p class="compose__kind" id="note-kind" aria-live="polite"></p>
             <div class="compose__foot">
               <span class="compose__count" id="note-count">0 / 800</span>
-              <button type="submit" class="btn btn--gold">Seal &amp; send</button>
+              <div class="compose__buttons">
+                <button type="button" class="btn btn--ghost" id="note-preview">Preview</button>
+                <button type="submit" class="btn btn--gold" id="note-seal">Seal it</button>
+              </div>
             </div>
             <p class="compose__status" id="compose-status" role="status" aria-live="polite"></p>
+            <svg class="compose__stamp" aria-hidden="true"><use href="#ico-seal"/></svg>
           </form>
+
+          <div class="card sealed" id="sealed" hidden>
+            <svg class="sealed__seal" aria-hidden="true"><use href="#ico-seal"/></svg>
+            <p class="kicker" id="sealed-kicker">Sealed with love</p>
+            <h3 class="sealed__title">Your letter for <span class="royal" id="sealed-to">Jemimah</span> is sealed</h3>
+            <p class="sealed__lead">Now send it. It opens in the wax-sealed envelope on their phone.</p>
+            <div class="sealed__actions">
+              <a class="btn btn--gold" id="sealed-whatsapp" href="#" target="_blank" rel="noopener">Send on WhatsApp</a>
+              <button type="button" class="btn btn--ghost" id="sealed-share" hidden>More ways to send…</button>
+              <button type="button" class="btn btn--ghost" id="sealed-copy">Copy link</button>
+            </div>
+            <label class="sheet__label" for="sealed-link">The letter’s link</label>
+            <input class="sheet__input sealed__link" id="sealed-link" type="text" readonly>
+            <p class="sealed__note" id="sealed-long" hidden>A long letter makes a long link. WhatsApp keeps it whole; a text message may cut it.</p>
+            <p class="compose__status" id="sealed-status" role="status" aria-live="polite"></p>
+            <div class="sealed__more">
+              <button type="button" class="text-link" id="sealed-preview">Preview the envelope</button>
+              <button type="button" class="text-link" id="sealed-new">Write another letter</button>
+            </div>
+          </div>
+          </div>
           <div class="kept">
             <h3 class="card__label">Letters kept on this phone</h3>
             <div class="kept__list" id="kept-list"></div>
