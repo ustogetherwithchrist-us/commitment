@@ -2075,6 +2075,23 @@
   initFooter();
   initSync();
 
+  // Phones (especially the home-screen app) can keep an old copy of the page.
+  // On opening, quietly ask for the newest page; if it is a newer version, reload once.
+  (function checkForUpdate() {
+    var mine = document.querySelector('meta[name="site-version"]');
+    if (!mine || !window.fetch) return;
+    var tried = null;
+    try { tried = sessionStorage.getItem("jj-updated-to"); } catch (e) { /* ignore */ }
+    fetch(location.pathname + "?check=" + Date.now(), { cache: "no-store" }).then(function (r) {
+      return r.ok ? r.text() : "";
+    }).then(function (html) {
+      var found = /<meta name="site-version" content="([^"]+)"/.exec(html);
+      if (!found || found[1] === mine.content || found[1] === tried) return;
+      try { sessionStorage.setItem("jj-updated-to", found[1]); } catch (e) { /* ignore */ }
+      location.replace(location.pathname + "?v=" + encodeURIComponent(found[1]) + location.hash);
+    }).catch(function () { /* offline: keep what we have */ });
+  })();
+
   // A letter or progress link opened while the page is already open (e.g. the home-screen app).
   window.addEventListener("hashchange", function () {
     var letter = readNoteFromLink();
