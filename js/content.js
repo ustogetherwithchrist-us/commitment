@@ -9,7 +9,7 @@ window.CONTENT = {
       title: "Lifelong Fellowship",
       subtitle: "Growing closer to Christ, together",
       body:
-        "A threefold cord: Jemimah, Joel and Christ. Our marriage is a lifelong fellowship in which we pray, worship, read the Word and walk side by side, so that each day we grow closer to Christ, and in Him, closer to each other.",
+        "A threefold cord: Joel and Jesus Christ, bound together by the Holy Spirit. Our marriage is a lifelong fellowship in which we pray, worship, read the Word and walk side by side, so that each day we grow closer to Christ, and in Him, closer to each other.",
       verses: [
         {
           ref: "Ecclesiastes 4:9–12",
@@ -105,7 +105,7 @@ window.CONTENT = {
 
   roles: [
     {
-      name: "Joel",
+      name: "Jesus",
       title: "As a husband",
       body:
         "Called to love as Christ loves the church: to lead with humility, to protect and provide, to pray over his bride, and to lay down his life for her.",
@@ -136,7 +136,7 @@ window.CONTENT = {
       ]
     },
     {
-      name: "Jemimah",
+      name: "Joel",
       title: "As a wife",
       body:
         "Called to be a woman of strength and grace: to honor and help her husband, to build up their home, and to carry the hidden beauty of a gentle and quiet spirit.",

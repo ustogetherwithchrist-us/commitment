@@ -363,7 +363,7 @@ window.JJStore = (function () {
     var who = read("jj-me");
     return encrypt(data, cfg.secret, salt).then(function (file) {
       var body = {
-        message: "Sync our data" + (who === "Joel" || who === "Jemimah" ? " from " + who + "’s phone" : "") + " ♥",
+        message: "Sync our data" + (who === "Joel" || who === "Jesus" ? " from " + who + "’s phone" : "") + " ♥",
         content: utf8ToB64(JSON.stringify(file)),
         branch: REPO.branch
       };

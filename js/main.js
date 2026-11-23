@@ -856,16 +856,22 @@
     }
   }
 
-  function otherOf(name) { return name === "Joel" ? "Jemimah" : "Joel"; }
+  // Joel is the bride, Jesus Christ the Bridegroom.
+  function otherOf(name) { return name === "Jesus" ? "Joel" : "Jesus"; }
+
+  // Letters sent before this change were between Jemimah and Joel; old links keep that meaning.
+  var LETTER_NAMES = ["Joel", "Jesus", "Jemimah"];
+  function legacyOther(name) { return name === "Joel" ? "Jemimah" : "Joel"; }
 
   function decodeNote(code) {
     try {
       var o = JSON.parse(fromB64Url(code));
-      if (!o || (o.f !== "Jemimah" && o.f !== "Joel") || typeof o.m !== "string" || !o.m.trim()) return null;
+      if (!o || LETTER_NAMES.indexOf(o.f) === -1 || typeof o.m !== "string" || !o.m.trim()) return null;
+      var to = LETTER_NAMES.indexOf(o.t) !== -1 && o.t !== o.f ? o.t : legacyOther(o.f);
       return {
         id: code,
         from: o.f,
-        to: otherOf(o.f),
+        to: to,
         msg: o.m.slice(0, NOTE_MAX),
         date: /^\d{4}-\d{2}-\d{2}$/.test(o.d) ? o.d : null
       };
@@ -938,7 +944,7 @@
   }
 
   function letterLink(l) {
-    return SITE + "#note=" + toB64Url(JSON.stringify({ f: l.from, m: l.msg, d: l.date || null }));
+    return SITE + "#note=" + toB64Url(JSON.stringify({ f: l.from, t: l.to, m: l.msg, d: l.date || null }));
   }
 
   function letterMessage(l, url) {
@@ -990,7 +996,7 @@
       }, 120);
     }
 
-    setFrom(me === "Jemimah" || me === "Joel" ? me : null);
+    setFrom(me === "Joel" || me === "Jesus" ? me : null);
     form.addEventListener("change", function (e) {
       if (e.target.name !== "from") return;
       writeStore(ME_KEY, e.target.value);
@@ -1365,7 +1371,7 @@
     });
 
     var me = readStore(ME_KEY);
-    var other = me === "Jemimah" || me === "Joel" ? otherOf(me) : null;
+    var other = me === "Joel" || me === "Jesus" ? otherOf(me) : null;
     var shareBtn = $("#plan-share");
     if (other) shareBtn.textContent = "Send our progress to " + other;
     shareBtn.addEventListener("click", function () {
@@ -1416,7 +1422,7 @@
 
   // Did the writer already begin with a greeting of their own?
   function hasGreeting(msg) {
-    return /^\s*(my\s+)?(dear|dearest|darling|beloved|sweetheart|love|jemimah|joel)\b/i.test(msg.split("\n")[0]);
+    return /^\s*(my\s+)?(dear|dearest|darling|beloved|sweetheart|love|joel|jesus|lord)\b/i.test(msg.split("\n")[0]);
   }
 
   function splitParagraphs(msg) {
@@ -1561,12 +1567,12 @@
         title.appendChild(el("span", "royal", pending.to));
         $("#envelope-letter-text").textContent = "For you, " + pending.to + " ♥";
       } else {
-        // The daily proposal is always from Joel to Jemimah.
+        // The daily proposal is always from Jesus to Jesus.
         $("#envelope-kicker").textContent = "The Holy Matrimony Celebration";
         title.append("A letter from ");
-        title.appendChild(el("span", "royal", "Joel"));
+        title.appendChild(el("span", "royal", "Jesus"));
         title.append(" to ");
-        title.appendChild(el("span", "royal", "Jemimah"));
+        title.appendChild(el("span", "royal", "Joel"));
         $("#envelope-letter-text").textContent = "Will you marry me?";
       }
     }
@@ -1837,7 +1843,7 @@
     $("#share-btn").addEventListener("click", function () {
       shareLink({
         url: SITE,
-        text: "Jemimah & Joel · United in Christ, bound in eternal love",
+        text: "Joel & Jesus · United in Christ, bound in eternal love",
         shared: "Shared ♥",
         copied: "Link copied ♥",
         done: say
